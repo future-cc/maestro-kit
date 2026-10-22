@@ -1,0 +1,31 @@
+
+<!-- maestro-kit:begin -->
+## E2E 测试（Maestro + maestro-kit）
+
+**统一用脚本跑，不要直接裸跑 `maestro test`**：
+
+```bash
+bash .maestro/kit/e2e.sh                 # 按 e2e.config 的 FLOW_GLOBS 逐个跑
+bash .maestro/kit/e2e.sh .maestro/<模块>/<flow>.yaml
+bash .maestro/kit/e2e.sh --build         # 先构建安装再测
+bash .maestro/kit/e2e.sh --list          # 只列出 flow
+bash .maestro/kit/e2e.sh --lint          # 只做 flow 静态检查
+```
+
+- 退出码：`0` 全部通过，`1` 有失败，`124` 有 flow 超时，`2` 用法/环境错误（无设备、未安装 App、构建失败）。
+- 多台设备时必须指定：`ANDROID_SERIAL=<序列号> bash .maestro/kit/e2e.sh`。
+- 账号等变量写在 `.maestro/e2e.env`（已被 .gitignore），不要写进 flow。
+- **跑测试期间 agent 不要操作设备**（不要用 Maestro MCP / adb 点界面）；让用户在终端面板里跑，或后台运行，结束后再读结果。
+- 产物在 `.maestro/reports/<时间>/`：
+  - `summary.md`：**agent 先读这个**。每步状态、失败归类与建议、失败时间点的 App 日志、接口错误/崩溃。
+  - `report.html`：给人看，每步带截图，点击截图放大。
+  - `result.json`：机器可读结果；`screenshots/`、`logcat.txt`、`failure_final_screen.png`。
+
+**失败后的排查顺序**：① 读 `summary.md` 的“归类”；② 看“App 运行日志中的异常”（接口 4xx/5xx、崩溃常常才是真正原因）；③ 看失败截图；④ 再判断是用例问题还是 App/环境问题。**不要为了通过而改断言或删步骤**。
+
+**写 flow 的规则**：
+- 优先级 `id` > 文本 > 坐标（禁止坐标）。Flutter 用 `Semantics(identifier:)`；原生用 `resource-id`，Compose 用 `testTag` 并在根节点开 `testTagsAsResourceId = true`。
+- 每步写 `label`（中文说明），关键阶段 `takeScreenshot: "序号_阶段"`。
+- **断言必须有正向断言**：加载遮罩/弹窗会让元素从元素树里消失，“某元素不可见”会误判通过。
+- 反欺诈/验证码/设备校验是风控，脚本不处理、不绕过。
+<!-- maestro-kit:end -->

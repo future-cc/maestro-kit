@@ -1,0 +1,11 @@
+# 通用启动步骤：保留数据启动并等待首屏。把 visible 换成你的 App 首屏上稳定出现的文字或 id。
+# 不要写 ".+" 之类匹配任意文字的条件：它会被上一个 App 的内容满足（lint W011）
+appId: ${APP_ID}
+---
+- launchApp:
+    label: "启动 App（保留数据）"
+    clearState: false
+- extendedWaitUntil:
+    label: "等待首屏出现"
+    visible: "替换成首屏上稳定出现的文字或 id"
+    timeout: 30000

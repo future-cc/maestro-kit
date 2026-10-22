@@ -1,0 +1,16 @@
+appId: com.example.app
+tags:
+  - smoke
+---
+# 示例：把 appId、断言文案换成你自己的。每步写 label，关键阶段截图，最后用正向断言
+- launchApp:
+    label: "启动 App"
+# launchApp 不等首帧：先显式等一个首屏上稳定出现的元素，再截图/断言
+- extendedWaitUntil:
+    label: "等待首屏出现关键元素"
+    visible: "替换成首屏上稳定出现的文字"
+    timeout: 30000
+- takeScreenshot: "01_首屏"
+- assertVisible:
+    label: "首屏出现关键元素（正向断言）"
+    text: "替换成首屏上稳定出现的文字"
