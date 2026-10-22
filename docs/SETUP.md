@@ -60,10 +60,11 @@ bash .maestro/kit/e2e.sh --build                 # 构建安装并运行
 
 ### 3.1 先拿到 maestro-kit 仓库
 
-**目前这个仓库只存在于原电脑的本地（`~/Documents/workspace/maestro-kit`），还没有推送到任何远端，别的电脑拿不到。** 在别的电脑使用前，需要先二选一：
+```bash
+git clone https://github.com/future-cc/maestro-kit.git
+```
 
-1. **推到远端仓库**（GitHub / 公司 GitLab 均可）：在原电脑执行 `git remote add origin <地址>` 与 `git push -u origin main`，别的电脑 `git clone <地址> maestro-kit`。
-2. **直接拷贝目录**：`maestro-kit/` 整个目录（含 `kit/`、`templates/`、`install.sh`、`VERSION`）用压缩包或 U 盘拷过去即可，不依赖其他东西。
+这是**公开仓库**，不要往里提交账号、公司项目名或内部域名。没有网络、或想离线使用时，也可以把整个 `maestro-kit/` 目录（含 `kit/`、`templates/`、`install.sh`、`VERSION`）用压缩包或 U 盘拷过去，不依赖其他东西。
 
 ### 3.2 安装
 

@@ -6,7 +6,7 @@
 
 **先读 [docs/SETUP.md](docs/SETUP.md)**：需要装什么（Java 17+、Maestro CLI、adb、python3）、怎么拿到本仓库、换电脑最容易踩的坑、平台支持情况。装好后用 `bash .maestro/kit/e2e.sh --doctor` 一条命令检查缺什么。
 
-> 注意：本仓库目前只在原电脑本地，**尚未推送到远端**；别的电脑要用，需要先推送或拷贝目录（见 SETUP.md 第 3 节）。
+> 获取本仓库：`git clone https://github.com/future-cc/maestro-kit.git`（公开仓库）。
 
 ## 安装到项目
 
