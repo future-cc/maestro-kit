@@ -17,6 +17,7 @@
   W009 swipe 起点在屏幕边缘（百分比坐标 ≤1% 或 ≥99%）：会被系统当作返回/通知栏/控制中心手势，App 可能直接退出（Maestro 2.11 实测）
   W010 launchApp 之后紧跟的不是等待/断言（如截图、waitForAnimationToEnd、assertNotVisible），或 launchApp 是最后一步：launchApp 是冷启动且不等首帧，会撞上空白启动页
   I005 使用 hideKeyboard：Android 上软键盘没显示时它会发送返回键，可能直接退出当前页面（实测，模拟器启用硬件键盘时尤其常见）；优先点击页面上一个中性元素来收起焦点
+  W012 flow 里还有模板占位文字（“替换成…”）：lint 能通过但实际一定跑不过，必须换成被测 App 的真实元素
   W011 等待/断言的文字是 .+ 或 .*（匹配任意文字）：launchApp 后它会被上一个 App 的内容满足，等于没等，截图还会截到切换过渡画面（实测）
   I001 步骤没有 label（报告里只能看到命令类型）
   I002 整个 flow 没有 takeScreenshot
@@ -47,6 +48,9 @@ def lint(path):
     header = lines[: sep or 0]
     body = lines[(sep + 1) if sep is not None else 0 :]
     off = (sep + 1) if sep is not None else 0
+    for i, l in enumerate(lines):
+        if "替换成" in l:
+            issues.append(("W", "W012", i + 1, "还有模板占位文字（“替换成…”）；lint 通过不代表能运行，请换成被测 App 首屏上真实存在的文字或 id"))
     if not any(re.match(r"\s*appId\s*:", l) for l in header):
         issues.append(("W", "W005", 1, "缺少 appId"))
 

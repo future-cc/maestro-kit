@@ -2,6 +2,12 @@
 
 给 Android（原生 / Flutter）项目用的 Maestro 运行套件：逐步进度、截图报告、失败归类、flow 静态检查、自测。
 
+## 让 AI 帮你配置
+
+把本仓库克隆到新电脑后，直接让 AI 助手（如 Claude Code）读 **[AGENTS.md](AGENTS.md)**（`CLAUDE.md` 已引用它）。里面按顺序写了自检、安装、配置、运行的步骤，以及**哪些事必须先问你、哪些事绝对不能做**。AI 读 `bash kit/doctor.sh --json` 的结果来判断缺什么。
+
+> 如实说明：AI 能照手册完成"检查环境、装进项目、校验配置、跑 lint 和 flow 列表"；安装 JDK / Android SDK、启动模拟器、填账号、过手机验证这些需要你来做或明确批准。
+
 ## 换了电脑 / 新队友
 
 **先读 [docs/SETUP.md](docs/SETUP.md)**：需要装什么（Java 17+、Maestro CLI、adb、python3）、怎么拿到本仓库、换电脑最容易踩的坑、平台支持情况。装好后用 `bash .maestro/kit/e2e.sh --doctor` 一条命令检查缺什么。
@@ -12,7 +18,7 @@
 
 ```bash
 bash install.sh /path/to/project            # 首次：复制脚本、生成配置、更新 .gitignore、追加 CLAUDE.md 约定
-bash install.sh /path/to/project --update   # 之后只更新 .maestro/kit 里的脚本
+bash install.sh /path/to/project --update   # 之后只更新 .maestro/kit 里的脚本（注意：会清空重写 .maestro/kit，不要手改里面的文件）
 ```
 
 装完后：检查 `.maestro/e2e.config`，把 `.maestro/e2e.env.example` 复制为 `e2e.env` 填账号，然后 `bash .maestro/kit/e2e.sh --list`。
@@ -24,11 +30,12 @@ bash .maestro/kit/e2e.sh                       # 按 FLOW_GLOBS 逐个跑
 bash .maestro/kit/e2e.sh .maestro/x/y.yaml     # 单个
 bash .maestro/kit/e2e.sh --build               # 先构建安装
 bash .maestro/kit/e2e.sh --lint                # 只做静态检查
-bash .maestro/kit/e2e.sh --doctor              # 环境自检（Java/Maestro/adb/设备/项目配置）
+bash .maestro/kit/e2e.sh --doctor              # 环境自检（Java/Maestro/adb/设备/项目配置）；加 --json 给 AI/脚本用
 ANDROID_SERIAL=emulator-5554 bash .maestro/kit/e2e.sh   # 多设备时必须指定
 bash .maestro/kit/e2e.sh --devices emulator-5554,emulator-5556   # 并行：flow 轮流分给各设备，每台一份子报告 + 合并摘要
 bash .maestro/kit/e2e.sh --prep-device         # 新设备首次使用：确认系统引导弹窗、关闭动画（会持久改设备设置）
 bash .maestro/kit/e2e.sh --tags smoke          # 套件自己按标签过滤（Maestro 对单个 flow 不过滤）
+bash .maestro/kit/e2e.sh <flow> --no-notify    # 结束时不弹桌面通知
 bash .maestro/kit/selftest.sh                  # 跑 .maestro/_selftest 自测并与预期比对
 ```
 
@@ -40,10 +47,11 @@ bash .maestro/kit/selftest.sh                  # 跑 .maestro/_selftest 自测�
 |---|---|
 | `kit/e2e.sh` | 运行器 |
 | `kit/e2e_summary.py` | 生成 `summary.md` / `report.html` / `result.json`，失败归类 |
-| `kit/e2e_lint.py` | flow 静态检查（W001–W011，I001–I005） |
+| `kit/e2e_lint.py` | flow 静态检查（W001–W012，I001–I005） |
 | `kit/selftest.sh` | 自测运行器（头部注释声明预期） |
-| `kit/doctor.sh` | 环境自检（`e2e.sh --doctor` 调用它） |
+| `kit/doctor.sh` | 环境自检（`e2e.sh --doctor` 调用它），`--json` 输出机器可读结果 |
 | `templates/` | 配置、示例 flow、CLAUDE.md 片段 |
+| `AGENTS.md` / `CLAUDE.md` | **给 AI 助手的上手手册**（配置步骤、需要先问用户的事、硬性规则） |
 | `docs/SETUP.md` | **在其他电脑上使用：环境要求、获取方式、常见坑、平台支持** |
 | `docs/FINDINGS.md` | **Maestro 与套件的已知问题清单、未覆盖项** |
 

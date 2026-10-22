@@ -6,7 +6,7 @@
 #
 # 选项:
 #   --build            先构建并安装 APK（读取 e2e.config 的 BUILD_CMD / APK_PATH）
-#   --doctor           环境自检（Java/Maestro/adb/设备/项目配置），换电脑后先跑一遍
+#   --doctor [--json]  环境自检（Java/Maestro/adb/设备/项目配置），换电脑后先跑一遍；--json 给 AI/脚本用
 #   --list             只列出将要运行的 flow，不运行
 #   --lint             只做 flow 静态检查，不运行
 #   --strict           lint 发现 WARN 时中止
@@ -30,7 +30,7 @@ ROOT="$(cd "$KIT_DIR/../.." && pwd)"   # 项目根 = <root>/.maestro/kit/..
 cd "$ROOT" || exit 2
 
 # 环境自检：bash .maestro/kit/e2e.sh --doctor
-[ "${1:-}" = "--doctor" ] && exec bash "$KIT_DIR/doctor.sh"
+[ "${1:-}" = "--doctor" ] && exec bash "$KIT_DIR/doctor.sh" "${2:-}"
 
 # ---------- 配置 ----------
 APP_ID=""; BUILD_CMD=""; APK_PATH=""; FLOW_GLOBS="*/*.yaml"; FLOW_TIMEOUT=900

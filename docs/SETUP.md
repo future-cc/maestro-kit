@@ -78,6 +78,8 @@ bash maestro-kit/install.sh /path/to/project
 
 ## 4. 配合 Claude Code 使用
 
+- **让 AI 帮你配置**：克隆本仓库后，让 AI 读根目录的 `AGENTS.md`（`CLAUDE.md` 已引用）。它会用 `kit/doctor.sh --json` 判断缺什么，按步骤装进项目。需要下载执行外部脚本、装 SDK、改设备设置、填凭证的步骤，手册要求它先问你。
+
 - `install.sh` 追加到项目 `CLAUDE.md` 的约定，会让 Claude 统一用 `e2e.sh` 跑测试、按固定顺序读报告排查。注意：如果项目把 `CLAUDE.md` 加进了 `.gitignore`（有的项目就是这样），这段约定**不会随代码同步到别的电脑**，需要在那台电脑上重新 `install.sh` 或手动复制。
 - 想让 Claude 用 Maestro MCP 实时操作设备，**在每台电脑上自己执行**：`claude mcp add maestro -- maestro mcp`（用命令名，不要写绝对路径）。不要把含本机绝对路径的 `.mcp.json` 提交到仓库，队友的路径不一样。
 - 跑测试期间不要让 Claude 同时操作同一台设备。

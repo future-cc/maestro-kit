@@ -148,11 +148,11 @@ else
 fi
 [ -f "$PROJ/.maestro/e2e.env.example" ] || cp "$HERE/templates/e2e.env.example" "$PROJ/.maestro/e2e.env.example"
 mkdir -p "$PROJ/.maestro/subflows"
-[ -f "$PROJ/.maestro/subflows/launch_app.yaml" ] || cp "$HERE/templates/subflows/launch_app.yaml" "$PROJ/.maestro/subflows/launch_app.yaml"
+# 注意：templates/subflows/launch_app.yaml 只是写法参考，不再自动装进项目（它带占位文字且没有任何 flow 引用）
 if [ -z "$(ls "$PROJ"/.maestro/*/*.yaml 2>/dev/null | grep -v '/subflows/\|/kit/')" ]; then
   mkdir -p "$PROJ/.maestro/smoke"
   sed "s|com.example.app|${APP_ID:-com.example.app}|" "$HERE/templates/smoke_example.yaml" > "$PROJ/.maestro/smoke/smoke_example.yaml"
-  echo "已生成示例 flow .maestro/smoke/smoke_example.yaml（请按项目修改）"
+  echo "已生成示例 flow .maestro/smoke/smoke_example.yaml（里面是占位文字，必须换成 App 首屏上真实存在的元素，否则一定失败；lint W012 会提示）"
 fi
 
 # ---------- .gitignore ----------
