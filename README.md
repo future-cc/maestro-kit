@@ -36,6 +36,8 @@ bash .maestro/kit/e2e.sh --devices emulator-5554,emulator-5556   # 并行：flow
 bash .maestro/kit/e2e.sh --prep-device         # 新设备首次使用：确认系统引导弹窗、关闭动画（会持久改设备设置）
 bash .maestro/kit/e2e.sh --tags smoke          # 套件自己按标签过滤（Maestro 对单个 flow 不过滤）
 bash .maestro/kit/e2e.sh <flow> --no-notify    # 结束时不弹桌面通知
+bash .maestro/kit/e2e.sh <flow> --repeat 20    # 稳定性：连续跑 20 次，每次独立报告，汇总通过率；新用例要 20 次全过才入回归库
+bash .maestro/kit/e2e.sh <flow> --retry-failed 1   # 失败自动重跑 1 次；重跑才通过的记为“不稳定(flaky)”，不算通过
 bash .maestro/kit/selftest.sh                  # 跑 .maestro/_selftest 自测并与预期比对
 ```
 
@@ -47,8 +49,10 @@ bash .maestro/kit/selftest.sh                  # 跑 .maestro/_selftest 自测�
 |---|---|
 | `kit/e2e.sh` | 运行器 |
 | `kit/e2e_summary.py` | 生成 `summary.md` / `report.html` / `result.json`，失败归类 |
+| `kit/e2e_repeat.py` | `--repeat` / `--retry-failed` 的编排（Python 标准库），写 `summary.md` / `result.json` |
 | `kit/e2e_lint.py` | flow 静态检查（W001–W012，I001–I005） |
 | `kit/selftest.sh` | 自测运行器（头部注释声明预期） |
+| `selftest/` | 套件自己的自测（用模拟器自带“设置”应用，不依赖项目）：`bash selftest/run.sh`；稳定性功能自测：`bash selftest/stability.sh` |
 | `kit/doctor.sh` | 环境自检（`e2e.sh --doctor` 调用它），`--json` 输出机器可读结果 |
 | `templates/` | 配置、示例 flow、CLAUDE.md 片段 |
 | `AGENTS.md` / `CLAUDE.md` | **给 AI 助手的上手手册**（配置步骤、需要先问用户的事、硬性规则） |

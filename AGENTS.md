@@ -62,7 +62,18 @@ bash .maestro/kit/e2e.sh <flow> --no-notify    # --no-notify：结束时不弹�
 ```
 多台设备必须指定 `ANDROID_SERIAL=<序列号>`；用 `adb devices` 看。第一次需要装 App 时加 `--build`（会运行构建命令，先问用户）。
 
-### 5. 读结果
+### 5. 稳定性：新用例要连续 20 次全过才入库
+```bash
+bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
+```
+- 每次运行都是独立的一次 `e2e.sh`，报告在 `.maestro/reports/<时间>_repeat/runs/<用例>/rNN_aK/`；汇总看 `<时间>_repeat/summary.md`（给人/AI 读）和 `result.json`（机器读）。
+- **第一次就通过才算通过**；第一次失败、重跑才通过 = “不稳定(flaky)”，**不算通过**，也不能入库。
+- 一个用例的结论：全部通过=稳定通过；全部失败=稳定失败；其余=不稳定。`summary.md` 会写“是否达到入库门槛（20 次）”。
+- 不稳定时：先读 `summary.md` 里的失败归类和失败截图，**多数是应用冷启动状态不确定（弹窗、落点页）或等待不足**，修用例的启动步骤，而不是加 `optional` 或删断言。
+- 重复运行期间同样**不要操作同一台设备**。每次运行约多花十几秒的 Maestro 启动开销。
+- `--repeat` / `--retry-failed` 暂不能与 `--devices` 同用。
+
+### 6. 读结果
 每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志），要给人看用 `report.html`。退出码：`0` 通过、`1` 有失败、`124` 超时、`2` 用法/环境错误。
 **通过不等于真的成功**：登录这类关键流程要打开最后一张截图确认，不要只看退出码。
 
@@ -81,7 +92,7 @@ bash .maestro/kit/e2e.sh <flow> --no-notify    # --no-notify：结束时不弹�
 ## 出了问题先看哪里
 - 多数现象在 [docs/FINDINGS.md](docs/FINDINGS.md) 有记录并带"套件的应对"（输入法把英文转汉字、`hideKeyboard` 会退出页面、`launchApp` 不等首帧、`--tags` 对单个 flow 无效、新设备系统弹窗、APK 装不上等）。
 - 新项目最常见的两类：Compose 默认没有 `resource-id`（要加 `testTag` + `testTagsAsResourceId`）；Flutter 要用 `Semantics(identifier:)`。
-- 想验证套件本身是否正常：在装了套件、并带有 `.maestro/_selftest/` 的项目里运行 `bash .maestro/kit/selftest.sh`。
+- 想验证套件本身是否正常：在本仓库里用模拟器跑 `ANDROID_SERIAL=<序列号> bash selftest/run.sh`（不依赖任何项目）；稳定性功能用 `bash selftest/stability.sh`。
 
 ## 不要假设的事
 - 套件只在 **macOS（Apple Silicon）** 上测试过；Linux / Windows 没测，理论上可用但**没有验证**，遇到问题如实说明，不要硬套结论。
