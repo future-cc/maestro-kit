@@ -9,7 +9,7 @@
 用户的第一句话可能只有一句（如“帮我测一下 XX 项目的 XX 功能”“我想给这个 App 做自动化测试”）。**先别动手，也别要求他贴长提示词。**
 
 **① 先自己查（不用问用户）：**
-- 设备：`adb devices`（几台、真机还是模拟器、序列号；机型和品牌用 `adb -s <序列号> shell getprop ro.product.brand`）。小米/红米等 HyperOS 手机先读 [docs/REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md)。
+- 设备：`adb devices`（几台、真机还是模拟器、序列号；机型和品牌用 `adb -s <序列号> shell getprop ro.product.brand`）。品牌是小米 / 红米 / POCO（HyperOS / MIUI）的手机，**动手前**先读 [docs/REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md)：这类手机每装一次 Maestro 驱动就弹一次“安装”确认，不提前设好 `--no-reinstall-driver`，会反复打扰用户（见硬性规则 11）。
 - 机器环境：`bash kit/doctor.sh --json`。
 - 项目：用户给了路径就**只读**地看项目类型、包名（`install.sh` 的识别逻辑可参考）、有没有已装的 `.maestro/`、项目自己的 `CLAUDE.md`。
 
@@ -93,7 +93,7 @@ bash install.sh /path/to/project
 - 需要时：`cp .maestro/e2e.env.example .maestro/e2e.env`，然后**让用户提供真实值，不要编造、不要从别处推测、不要写进 flow**，也不要在对话里复述。
 
 ### 4. 把示例 flow 换成真的，再先看再跑
-`install.sh` 生成的 `.maestro/smoke/smoke_example.yaml` 里是**占位文字**（"替换成…"），**不换就一定失败**（lint **W012** 会提示；lint 没有 WARN 也不代表它能运行）。要换成被测 App 首屏上真实存在的文字或 id：App 装好后用 `maestro hierarchy` 看元素树，或直接问用户；**不要猜文案**。
+`install.sh` 生成的 `.maestro/smoke/smoke_example.yaml` 里是**占位文字**（"替换成…"），**不换就一定失败**（lint **W012** 会提示；lint 没有 WARN 也不代表它能运行）。要换成被测 App 首屏上真实存在的文字或 id：App 装好后用 `maestro hierarchy` 看元素树（**小米/红米真机除外，改用 `adb exec-out uiautomator dump`，见硬性规则 11**），或直接问用户；**不要猜文案**。
 ```bash
 bash .maestro/kit/e2e.sh --list     # 会跑哪些 flow
 bash .maestro/kit/e2e.sh --lint     # 静态检查，先处理 WARN
@@ -129,6 +129,11 @@ bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 8. 涉及支付、转账、下单等真实业务写操作的用例，不要在线上环境跑。
 9. 写 shell 脚本时，`$VAR` 后面紧跟中文标点必须写成 `${VAR}`（macOS 自带 bash 3.2 否则会把它读成另一个变量名）。
 10. 只在被问到或确有必要时才推送到任何远端；推送公开仓库前先扫描敏感内容。
+11. **小米 / 红米 / POCO 真机上，每次 Maestro 启动都会重装驱动并弹“安装”确认**（[REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md) R1）。所以：
+    - 一律通过 `e2e.sh` 跑，并带 `--no-reinstall-driver`；**不要直接手敲 `maestro test`、`maestro hierarchy`、`maestro studio`**（它们每次都会让用户点一次确认）。确要直接调用 `maestro test`，也必须带 `--no-reinstall-driver`。
+    - 看页面元素用 `adb exec-out uiautomator dump` 或截图，不用 `maestro hierarchy`。
+    - 第一次运行前，**先告诉用户“手机会弹一次安装确认，请在旁边点一下”**，再运行；驱动装好后不应再弹。如果用户反馈又频繁弹，先检查自己是不是漏了参数，再查别的原因。
+    - 测试全部结束后，告诉用户驱动还留在手机上，问是否卸载。
 
 ## 出了问题先看哪里
 - 多数现象在 [docs/FINDINGS.md](docs/FINDINGS.md) 有记录并带"套件的应对"（输入法把英文转汉字、`hideKeyboard` 会退出页面、`launchApp` 不等首帧、`--tags` 对单个 flow 无效、新设备系统弹窗、APK 装不上等）。
