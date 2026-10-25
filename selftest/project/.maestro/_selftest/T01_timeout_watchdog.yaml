@@ -1,0 +1,17 @@
+# expect: timeout
+# timeout: 8
+# note: 整个 flow 只给 8 秒，却等一个永远不出现的元素 60 秒：应被强制终止，退出码 124
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- extendedWaitUntil:
+    label: 等一个永远不会出现的元素
+    visible:
+      text: "NoSuchThing12345"
+    timeout: 60000

@@ -1,0 +1,19 @@
+# expect: pass
+# env: SPECIAL=a b&c"d$e
+# note: 环境变量含空格、&、双引号、$：值要完整传到 flow 里（长度 9，第 4 位是 &）
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- assertTrue:
+    label: 长度是 9
+    condition: ${SPECIAL.length == 9}
+- assertTrue:
+    label: 第 4 位是 &
+    condition: ${SPECIAL.charAt(3) == '&'}
+- takeScreenshot: e01_home

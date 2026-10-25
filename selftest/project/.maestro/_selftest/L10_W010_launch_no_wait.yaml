@@ -1,0 +1,6 @@
+# expect: lint:W010
+# note: launchApp 后紧跟截图
+appId: com.android.settings
+---
+- launchApp
+- takeScreenshot: right_after_launch

@@ -1,0 +1,36 @@
+# expect: pass
+# note: runFlow when 的 visible 分支执行、notVisible 分支不执行
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- evalScript:
+    label: 计数清零
+    script: ${output.hit = 0}
+- runFlow:
+    label: 标题可见时执行
+    when:
+      visible:
+        id: "homepage_title"
+    commands:
+      - evalScript:
+          label: 标记走了 visible 分支
+          script: ${output.hit = output.hit + 1}
+- runFlow:
+    label: 标题不可见时执行（不应执行）
+    when:
+      notVisible:
+        id: "homepage_title"
+    commands:
+      - evalScript:
+          label: 标记走了 notVisible 分支
+          script: ${output.hit = output.hit + 10}
+- assertTrue:
+    label: 只走了 visible 分支
+    condition: ${output.hit == 1}
+- takeScreenshot: r01_home

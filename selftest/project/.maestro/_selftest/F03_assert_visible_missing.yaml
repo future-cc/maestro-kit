@@ -1,0 +1,16 @@
+# expect: fail:assertion_failed
+# timeout: 90
+# note: assertVisible 找不到元素时 Maestro 报 “Assertion is false: … is visible”（不是 Element not found），套件归为 assertion_failed
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- assertVisible:
+    label: 断言一个不存在的文字
+    text: "NoSuchThing12345"
+- takeScreenshot: f03_unreachable

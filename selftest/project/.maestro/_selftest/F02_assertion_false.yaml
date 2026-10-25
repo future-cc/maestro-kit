@@ -1,0 +1,16 @@
+# expect: fail:assertion_failed
+# timeout: 90
+# note: assertTrue 条件为假
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- assertTrue:
+    label: 1 等于 2（故意不成立）
+    condition: ${1 == 2}
+- takeScreenshot: f02_unreachable

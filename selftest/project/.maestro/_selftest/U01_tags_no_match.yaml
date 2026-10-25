@@ -1,0 +1,8 @@
+# expect: usage
+# args: --tags nosuchtag
+# note: 标签没有匹配到任何 flow：退出码 2（Maestro 自己对单个 flow 不过滤，见 FINDINGS M13）
+appId: com.android.settings
+tags:
+  - smoke
+---
+- launchApp

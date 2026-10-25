@@ -1,0 +1,6 @@
+# expect: lint:I005
+# note: hideKeyboard（INFO 级）
+appId: com.android.settings
+---
+- launchApp
+- hideKeyboard

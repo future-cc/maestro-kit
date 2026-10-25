@@ -1,0 +1,8 @@
+# expect: lint:I003
+# note: label 里引用变量（INFO 级）
+appId: com.android.settings
+---
+- launchApp
+- assertVisible:
+    label: 看到 ${SOMETHING}
+    id: "homepage_title"

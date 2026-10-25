@@ -1,0 +1,15 @@
+# expect: lint:I004
+# lint-forbid: W002
+# note: lint-ignore 能压掉指定规则：这条坐标点击被 W002 忽略，所以只剩 I 级提示（不应出现 W002，见下方 forbid 检查）
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"
+# lint-ignore: W002
+- tapOn:
+    label: 点坐标（已忽略）
+    point: "50%,50%"
+    optional: true

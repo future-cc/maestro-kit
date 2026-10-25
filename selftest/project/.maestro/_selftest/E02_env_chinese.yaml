@@ -1,0 +1,16 @@
+# expect: pass
+# env: GREETING=你好，世界
+# note: 环境变量含中文和全角标点：flow 里能原样比较（只验证“传递”，不是 inputText）
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- assertTrue:
+    label: 值等于 你好，世界
+    condition: ${GREETING == '你好，世界'}
+- takeScreenshot: e02_home

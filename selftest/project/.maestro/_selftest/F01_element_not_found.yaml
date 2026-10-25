@@ -1,0 +1,16 @@
+# expect: fail:element_not_found
+# timeout: 90
+# note: 点一个不存在的文字
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- tapOn:
+    label: 点不存在的元素
+    text: "NoSuchThing12345"
+- takeScreenshot: f01_unreachable

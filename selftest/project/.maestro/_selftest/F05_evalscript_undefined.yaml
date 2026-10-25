@@ -1,0 +1,15 @@
+# expect: fail:script_error
+# note: evalScript 里引用未定义变量
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- evalScript:
+    label: 引用未定义变量
+    script: ${notDefinedAnywhere.foo}
+- takeScreenshot: x1

@@ -1,0 +1,20 @@
+# expect: pass
+# summary-has: 警告步骤
+# note: optional 步骤找不到元素：退出码 0，但摘要必须有“警告步骤”区块
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- tapOn:
+    label: 点一个可有可无且不存在的元素
+    text: "NoSuchThing12345"
+    optional: true
+- assertVisible:
+    label: 首屏仍在
+    id: "homepage_title"
+- takeScreenshot: o01_home

@@ -1,0 +1,12 @@
+# expect: lint:W007
+# note: 截图重名且含 /
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"
+- takeScreenshot: same
+- takeScreenshot: same
+- takeScreenshot: a/b

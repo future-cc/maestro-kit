@@ -1,0 +1,13 @@
+# expect: lint:W009
+# note: swipe 起点在屏幕最左边缘
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"
+- swipe:
+    label: 边缘滑动
+    start: 0%, 50%
+    end: 80%, 50%

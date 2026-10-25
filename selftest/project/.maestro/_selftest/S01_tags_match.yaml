@@ -1,0 +1,15 @@
+# expect: pass
+# args: --tags smoke
+# note: 标签匹配时照常运行
+appId: com.android.settings
+tags:
+  - smoke
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- takeScreenshot: s01_home

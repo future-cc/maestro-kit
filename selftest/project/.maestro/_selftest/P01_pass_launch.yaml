@@ -1,0 +1,18 @@
+# expect: pass
+# note: 启动设置并看到首屏标题（一定通过）
+appId: com.android.settings
+tags:
+  - smoke
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- assertVisible:
+    label: 标题文字是 Settings
+    id: "homepage_title"
+    text: "Settings"
+- takeScreenshot: p01_home

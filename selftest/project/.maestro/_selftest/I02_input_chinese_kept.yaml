@@ -1,0 +1,25 @@
+# expect: pass
+# env: MIXED=中文abc
+# note: 向搜索框输入中英混合内容。FINDINGS M1 说 Maestro 会丢中文，本环境（见 FINDINGS）实测中文保留；此用例是回归哨兵——哪天环境变了、中文被丢，它会变红。注意：不能断言 abc，键盘候选条上也有 abc（假通过）
+appId: com.android.settings
+onFlowComplete:
+  - back
+  - back
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- tapOn:
+    label: 点搜索栏
+    id: "search_action_bar_title"
+- inputText:
+    label: 输入中英混合
+    text: ${MIXED}
+- assertVisible:
+    label: 输入框里是完整的 中文abc
+    text: "中文abc"
+- takeScreenshot: i02_search

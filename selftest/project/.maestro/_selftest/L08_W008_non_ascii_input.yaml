@@ -1,0 +1,12 @@
+# expect: lint:W008
+# note: inputText 含中文
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"
+- inputText:
+    label: 输入中文
+    text: "中文abc"

@@ -1,0 +1,8 @@
+# expect: lint:W001
+# note: 只有否定断言（没有任何正向断言；注意 extendedWaitUntil visible 也算正向）
+appId: com.android.settings
+---
+- launchApp
+- assertNotVisible:
+    label: 否定断言
+    text: "NoSuchThing12345"

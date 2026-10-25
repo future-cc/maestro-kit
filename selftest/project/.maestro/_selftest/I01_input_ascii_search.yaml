@@ -1,0 +1,25 @@
+# expect: pass
+# env: QUERY=wifi
+# note: 在设置搜索框输入英文（经 -e 传入），断言输入框里是完整的 wifi；临时切到 Gboard 才可靠（拼音输入法会转汉字）
+appId: com.android.settings
+onFlowComplete:
+  - back
+  - back
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- tapOn:
+    label: 点搜索栏
+    id: "search_action_bar_title"
+- inputText:
+    label: 输入英文关键字
+    text: ${QUERY}
+- assertVisible:
+    label: 输入框里是完整的 wifi
+    text: "wifi"
+- takeScreenshot: i01_search

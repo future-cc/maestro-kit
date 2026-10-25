@@ -1,0 +1,16 @@
+# expect: fail:script_error
+# timeout: 90
+# note: 没传变量时在 evalScript 里引用它，应归为 script_error（提示检查 -e / e2e.env）
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- evalScript:
+    label: 引用没传入的变量
+    script: ${NOT_PASSED_VAR.length}
+- takeScreenshot: e03_unreachable

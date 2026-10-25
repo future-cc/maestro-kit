@@ -1,0 +1,10 @@
+# expect: lint:W003
+# note: 路径含 login 的 flow 里 clearState（配置 LINT_CLEARSTATE_BLOCK=login）。只做 lint，不会运行
+appId: com.android.settings
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"

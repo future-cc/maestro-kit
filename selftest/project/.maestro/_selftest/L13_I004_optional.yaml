@@ -1,0 +1,9 @@
+# expect: lint:I004
+# note: optional 步骤（INFO 级）
+appId: com.android.settings
+---
+- launchApp
+- tapOn:
+    label: 可有可无
+    text: "NoSuchThing12345"
+    optional: true

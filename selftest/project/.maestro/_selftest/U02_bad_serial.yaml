@@ -1,0 +1,6 @@
+# expect: usage
+# serial: emulator-9999
+# note: 指定的设备不在线：退出码 2
+appId: com.android.settings
+---
+- launchApp

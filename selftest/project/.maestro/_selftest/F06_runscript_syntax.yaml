@@ -1,0 +1,15 @@
+# expect: fail:script_error
+# note: runScript 语法错误
+appId: com.android.settings
+---
+- launchApp:
+    label: 启动设置
+- extendedWaitUntil:
+    label: 等首屏标题
+    visible:
+      id: "homepage_title"
+    timeout: 15000
+- runScript:
+    label: 运行有语法错误的脚本
+    file: scripts/broken.js
+- takeScreenshot: x2

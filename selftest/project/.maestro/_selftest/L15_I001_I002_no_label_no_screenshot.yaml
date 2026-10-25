@@ -1,0 +1,7 @@
+# expect: lint:I001,I002
+# note: 没有 label、没有截图（INFO 级）
+appId: com.android.settings
+---
+- launchApp
+- assertVisible:
+    id: "homepage_title"

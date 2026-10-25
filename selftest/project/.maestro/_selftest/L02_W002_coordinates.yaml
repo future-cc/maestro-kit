@@ -1,0 +1,12 @@
+# expect: lint:W002
+# note: 坐标点击
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"
+- tapOn:
+    label: 点坐标
+    point: "50%,50%"

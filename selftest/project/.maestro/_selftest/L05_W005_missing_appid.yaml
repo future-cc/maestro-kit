@@ -1,0 +1,8 @@
+# expect: lint:W005
+# note: 缺少 appId
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等
+    visible:
+      id: "homepage_title"

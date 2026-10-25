@@ -1,0 +1,8 @@
+# expect: lint:W011
+# note: 等待任意文字 .+
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等任意文字
+    visible: ".+"

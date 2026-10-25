@@ -1,0 +1,9 @@
+# expect: lint:W012
+# note: 模板占位文字
+appId: com.android.settings
+---
+- launchApp
+- extendedWaitUntil:
+    label: 等首屏（替换成真实元素）
+    visible:
+      id: "homepage_title"
