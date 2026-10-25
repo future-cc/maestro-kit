@@ -23,9 +23,12 @@
 import argparse
 import json
 import os
+import glob
+import html
 import subprocess
 import sys
 import time
+from urllib.parse import quote
 
 GATE = 20  # 新用例连续全过多少次才算够入回归库
 SHOW_MAX = 15  # 摘要里每个用例最多列出多少次“不是一次过”的运行（完整列表在 result.json）
@@ -144,6 +147,68 @@ def finalize(args, flows, interrupted):
     return code, verdict
 
 
+def write_html(args, flows, code, verdict, started):
+    """汇总层网页报告：结果表 + 每次运行的色块（链接到该次自己的 report.html）+ 不是一次过的运行的失败截图。"""
+    esc = html.escape
+    url = lambda path: esc(quote(path))  # 路径里有空格/中文/特殊字符也能点开
+    h = [
+        "<meta charset='utf-8'><title>E2E 稳定性汇总</title>",
+        "<style>body{font-family:-apple-system,Segoe UI,sans-serif;max-width:1100px;margin:24px auto;padding:0 12px}"
+        "table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px 10px;vertical-align:top}"
+        ".ok{color:#1a7f37}.bad{color:#cf222e;font-weight:600}.mid{color:#9a6700;font-weight:600}"
+        ".cell{display:inline-block;min-width:44px;text-align:center;margin:2px;padding:4px 8px;border-radius:4px;color:#fff;text-decoration:none;font-size:13px}"
+        ".c-pass{background:#1a7f37}.c-flaky{background:#bf8700}.c-fail{background:#cf222e}"
+        "img{max-height:360px;border:1px solid #ccc;margin:4px;cursor:zoom-in}figure{display:inline-block;margin:6px;text-align:center}"
+        "figcaption{font-size:12px;color:#555}small{color:#555}"
+        "#lb{display:none;position:fixed;inset:0;background:#000d;z-index:9;justify-content:center;align-items:center}"
+        "#lb img{max-height:96vh;max-width:96vw;cursor:zoom-out}</style>",
+        "<div id='lb' onclick=\"this.style.display='none'\"><img></div>"
+        "<script>document.addEventListener('click',e=>{if(e.target.tagName=='IMG'&&!e.target.closest('#lb')){"
+        "var lb=document.getElementById('lb');lb.firstChild.src=e.target.src;lb.style.display='flex'}})</script>",
+        "<h1>E2E 稳定性汇总</h1>",
+        f"<p>结果：<b class='{'ok' if code == 0 else 'bad'}'>{esc(verdict)}</b>（退出码 {code}）　"
+        f"每个用例重复 {args.repeat} 次，失败自动重跑 {args.retry} 次，总耗时 {(time.time() - started) / 60:.1f} 分钟</p>",
+        "<p><small>判定：<b>第一次就通过才算通过</b>；第一次失败、重跑才通过的记为“不稳定(flaky)”，不算通过。"
+        f"入库门槛：连续 {GATE} 次全部第一次通过。</small></p>",
+        "<table><tr><th>用例</th><th>结论</th><th>通过</th><th>不稳定</th><th>失败</th><th>通过率</th><th>失败原因（按第一次尝试）</th></tr>",
+    ]
+    for f in flows:
+        cats = "，".join("%s×%d" % (CAT_ZH.get(c, c), n) for c, n in sorted(f["failure_categories"].items(), key=lambda x: -x[1])) or "-"
+        rate = "-" if f["pass_rate"] is None else "%d%%（%d/%d）" % (round(f["pass_rate"] * 100), f["passed_first_try"], f["total"])
+        cls = {"stable_pass": "ok", "stable_fail": "bad", "unstable": "mid"}[f["verdict"]]
+        h.append(f"<tr><td>{esc(f['name'])}</td><td class='{cls}'>{VERDICT_ZH[f['verdict']]}</td><td>{f['passed_first_try']}</td>"
+                 f"<td>{f['flaky']}</td><td>{f['failed']}</td><td>{rate}</td><td>{esc(cats)}</td></tr>")
+    h.append("</table>")
+    for f in flows:
+        if f["total"] >= GATE and f["verdict"] == "stable_pass":
+            note = f"{f['total']} 次全部通过，<b>达到入库门槛</b>（仅说明这台设备、这个环境下稳定）"
+        elif f["total"] < GATE:
+            note = f"只跑了 {f['total']} 次，不足 {GATE} 次，<b>不能据此入库</b>"
+        else:
+            note = f"<b>未达到入库门槛</b>（{VERDICT_ZH[f['verdict']]}）"
+        h.append(f"<h2>{esc(f['name'])}</h2><p><small>{note}。点色块打开该次运行的完整网页报告。</small></p><p>")
+        for r in f["runs"]:
+            last = r["attempts"][-1]
+            cls = {"pass": "c-pass", "flaky": "c-flaky", "fail": "c-fail"}[r["outcome"]]
+            lab = {"pass": "通过", "flaky": "不稳定", "fail": "失败"}[r["outcome"]]
+            href = url(os.path.join(last["report_dir"], "report.html"))
+            h.append(f"<a class='cell {cls}' href='{href}' title='第{r['index']}次：{lab}'>#{r['index']} {lab}</a>")
+        h.append("</p>")
+        bad = [r for r in f["runs"] if r["outcome"] != "pass"]
+        if bad:
+            h.append("<h3>不是一次过的运行</h3><table><tr><th>第几次</th><th>结果</th><th>尝试</th><th>失败步骤</th><th>原因归类</th><th>失败截图 / 报告</th></tr>")
+            for r in bad[:SHOW_MAX]:
+                for k, a in enumerate(r["attempts"], 1):
+                    shots = sorted(glob.glob(os.path.join(args.out, a["report_dir"], "screenshots", "*", "auto_step*.png")))
+                    fig = "".join(f"<figure><img src='{url(os.path.relpath(x, args.out))}'><figcaption>失败时的画面</figcaption></figure>" for x in shots[:1])
+                    link = f"<a href='{url(os.path.join(a['report_dir'], 'report.html'))}'>网页报告</a>"
+                    h.append(f"<tr><td>{r['index']}</td><td>{ {'flaky': '不稳定', 'fail': '失败'}[r['outcome']] }</td>"
+                             f"<td>第{k}次尝试：{'通过' if a['passed'] else '失败'}</td><td>{esc(a['failed_step'] or '-')}</td>"
+                             f"<td>{esc(CAT_ZH.get(a['category'], a['category'] or '-'))}</td><td>{fig}<br>{link}</td></tr>")
+            h.append("</table>")
+    open(os.path.join(args.out, "report.html"), "w", encoding="utf-8").write("\n".join(h) + "\n")
+
+
 def write_reports(args, flows, interrupted, started):
     code, verdict = finalize(args, flows, interrupted)
     md = ["# E2E 稳定性汇总", ""]
@@ -184,12 +249,13 @@ def write_reports(args, flows, interrupted, started):
         extra = len([r for r in f["runs"] if r["outcome"] != "pass"]) - SHOW_MAX
         if extra > 0:
             md += ["", f"（{f['name']} 还有 {extra} 次未列出，完整记录见 `result.json`）"]
-    md += ["", "## 其他文件", "- `runs/<用例>/rNN_aK/`：每一次运行自己的完整报告（summary.md、截图、logcat）", "- `console.txt`：全部运行的控制台输出"]
+    md += ["", "## 其他文件", "- `runs/<用例>/rNN_aK/`：每一次运行自己的完整报告（summary.md、截图、logcat）", "- `report.html`：本页的网页版（结果色块可点进每一次运行的网页报告，失败截图内嵌）", "- `console.txt`：全部运行的控制台输出"]
     open(os.path.join(args.out, "summary.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
     json.dump(
         {"mode": "repeat", "repeat": args.repeat, "retry_failed": args.retry, "exit_code": code, "verdict": verdict,
          "gate_runs": GATE, "interrupted": interrupted, "flows": flows},
         open(os.path.join(args.out, "result.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    write_html(args, flows, code, verdict, started)
     return code
 
 
@@ -224,6 +290,7 @@ def main():
     code = write_reports(args, flows, interrupted, started)
     log.close()
     print("\n稳定性汇总: %s" % os.path.join(os.path.relpath(args.out), "summary.md"))
+    print("网页报告: %s" % os.path.join(os.path.abspath(args.out), "report.html"))
     for f in flows:
         print("  %s: %s（通过 %d / 不稳定 %d / 失败 %d，共 %d 次）" % (f["name"], VERDICT_ZH[f["verdict"]], f["passed_first_try"], f["flaky"], f["failed"], f["total"]))
     return code

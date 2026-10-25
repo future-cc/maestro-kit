@@ -115,7 +115,8 @@ bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 - 个别真机（如小米 HyperOS）：每次运行都弹“安装驱动”确认、`launchApp` 到不了前台。解法见 [docs/REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md)：`--no-reinstall-driver` + `e2e.config` 的 `PRE_FLOW_CMD`。
 
 ### 6. 读结果
-每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志），要给人看用 `report.html`。退出码：`0` 通过、`1` 有失败、`124` 超时、`2` 用法/环境错误。
+每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志），要给人看用 `report.html`。
+**每次测试结束，都要把 `report.html` 的完整绝对路径主动告诉用户**（不要只给 `summary.md`，也不要用相对路径；用户的工作目录常常不是项目目录）。`--repeat` 时汇总页是 `.maestro/reports/<时间>_repeat/report.html`（色块可点进每一次运行的网页报告，失败截图内嵌），`e2e.sh` 结束时会打印它的完整路径——**不要用 `grep` 把这一行过滤掉**。退出码：`0` 通过、`1` 有失败、`124` 超时、`2` 用法/环境错误。
 **通过不等于真的成功**：登录这类关键流程要打开最后一张截图确认，不要只看退出码。
 
 ## 硬性规则（不要违反）
