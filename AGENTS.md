@@ -84,6 +84,7 @@ bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 - 不稳定时：先读 `summary.md` 里的失败归类和失败截图，**多数是应用冷启动状态不确定（弹窗、落点页）或等待不足**，修用例的启动步骤，而不是加 `optional` 或删断言。
 - 重复运行期间同样**不要操作同一台设备**。每次运行约多花十几秒的 Maestro 启动开销。
 - `--repeat` / `--retry-failed` 暂不能与 `--devices` 同用。
+- 个别真机（如小米 HyperOS）：每次运行都弹“安装驱动”确认、`launchApp` 到不了前台。解法见 [docs/REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md)：`--no-reinstall-driver` + `e2e.config` 的 `PRE_FLOW_CMD`。
 
 ### 6. 读结果
 每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志），要给人看用 `report.html`。退出码：`0` 通过、`1` 有失败、`124` 超时、`2` 用法/环境错误。

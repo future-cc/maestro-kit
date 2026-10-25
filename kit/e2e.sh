@@ -38,7 +38,7 @@ cd "$ROOT" || exit 2
 
 # ---------- 配置 ----------
 APP_ID=""; BUILD_CMD=""; APK_PATH=""; FLOW_GLOBS="*/*.yaml"; FLOW_TIMEOUT=900
-NOTIFY=1; ENV_FILE=".maestro/e2e.env"; BLOCK_PATTERNS=""; LINT_CLEARSTATE_BLOCK=""; PREP_DEVICE=0; PREP_IME=""
+NOTIFY=1; ENV_FILE=".maestro/e2e.env"; BLOCK_PATTERNS=""; LINT_CLEARSTATE_BLOCK=""; PREP_DEVICE=0; PREP_IME=""; PRE_FLOW_CMD=""
 [ -f .maestro/e2e.config ] && . .maestro/e2e.config
 # 稳定性编排的子运行：输入法/动画等设备准备已由父进程做过一次，这里不再重复
 [ -n "${E2E_SKIP_PREP:-}" ] && { PREP_IME=""; PREP_DEVICE=0; }
@@ -340,6 +340,9 @@ export E2E_BLOCK_PATTERNS="$BLOCK_PATTERNS" E2E_APP_ID="$APP_ID"
 for F in "${FLOWS[@]}"; do
   N=$((N+1)); NAME=$(basename "$F" .yaml)
   echo; echo "===== [$N/$TOTAL] $F ====="
+  # 每个 flow 运行前的钩子（e2e.config 的 PRE_FLOW_CMD，shell 语法；ANDROID_SERIAL 已导出，adb 默认指向当前设备）。
+  # 用途：个别手机（如小米 HyperOS）上 Maestro 的 launchApp 到不了前台，可在这里用 adb 先启动 App
+  if [ -n "$PRE_FLOW_CMD" ]; then ( eval "$PRE_FLOW_CMD" ) >/dev/null 2>&1 || echo "警告: PRE_FLOW_CMD 返回非 0" >&2; fi
   # Maestro 一次跑多个 flow 不打印逐步进度，所以逐个 flow 单独运行；--no-ansi 让 tee 下输出保持纯文本
   maestro test ${UDID_ARGS[@]+"${UDID_ARGS[@]}"} \
     ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${PASS_ARGS[@]+"${PASS_ARGS[@]}"} "$F" \
