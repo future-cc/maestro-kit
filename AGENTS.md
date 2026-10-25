@@ -1,5 +1,7 @@
 # AGENTS.md — 给 AI 助手的上手手册（maestro-kit）
 
+> **给不是 Claude Code 的 AI 工具（Cursor、OpenCode、Codex 等）：** 你的工具可能没有自动读到本文件（`CLAUDE.md` 里的 `@AGENTS.md` 是 Claude Code 的引用写法）。如果用户让你“先读 AGENTS.md”，就完整读完本文件再动手；文中说“主动问用户”时，直接在对话里问即可，不依赖某个提问工具。你需要有终端权限（能运行 `adb`、`maestro` 和本仓库的脚本）。本套件只在 macOS 上用 Claude Code 验证过，其他工具和系统**没有验证**，遇到问题如实告诉用户，不要硬套结论。
+
 你在一台**新电脑**上拿到了这个仓库，任务通常是：把 Maestro 测试环境配好，并把套件装进某个 Android（原生 / Flutter）项目。
 按下面的顺序做。**每一步先读输出再决定下一步，不要凭印象。** 人读的说明见 [docs/SETUP.md](docs/SETUP.md)，已知问题见 [docs/FINDINGS.md](docs/FINDINGS.md)。
 
