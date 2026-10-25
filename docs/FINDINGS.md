@@ -47,6 +47,7 @@
 | M32 | **M1（中文输入被丢）在最近一次实测中没有复现**：Android 16 模拟器 + Gboard + Maestro 2.11.0，向“设置”搜索框 `inputText: "中文abc"`，截图确认输入框里是完整的 `中文abc`；M1 当时的环境是另一台设备/应用，**原因未查清**（可能与系统版本、被测应用的输入框类型有关） | 不能再断言“Maestro 一定丢中文”，也不能断言“一定不丢” | lint W008 仍保留（保守）；自测 I02 是哨兵：断言完整 `中文abc` 可见，环境变了会变红。注意不要断言 `abc`——键盘候选条上也有，会假通过 |
 | M33 | **软键盘会盖住 Compose 页面右下角的保存按钮**：待办 App 新建页输入标题和描述后，Gboard 弹出，“Save task” 悬浮按钮被盖住，`tapOn` 报 `Element not found`（同一条用例在另一次模拟器状态下通过；该模拟器当前 `show_ime_with_hard_keyboard=1`，之前的值未记录）。基线里 30 次全失败 | 用例结果取决于“软键盘是否显示”这个设备状态，不是 App 或脚本的偶发问题 | 输入后 `hideKeyboard`（键盘会显示时有效；10 次验证通过），但键盘没显示时它会退出页面（M27）——要让测试设备键盘行为固定；见 docs/STABILITY_BASELINE.md |
 | M34 | **ANR（应用无响应）没有被识别为崩溃类**：笔记 App 冷启动超时，logcat 有 `ANR in <包名>` + `Reason: … failed to complete startup`，摘要把它归类为 `assertion_failed`，真实原因要自己翻 logcat（基线 30 次里 1 次） | 读摘要会误判成断言问题 | 记录在案；套件尚未支持 ANR 归类（待办）。排查时遇到“截图是别的 App 的页面”先 grep `ANR in` |
+| M35 | **`tapOn` 默认会等页面“静止”，在实时刷新的页面上每次要 2~8 秒，但这个等待同时在掩盖用例缺少的显式等待**：某个真实 Flutter 项目上实测，一个 27 步用例每次约 56s，其中步骤 40s、`PRE_FLOW_CMD` 8s、Maestro 启动/收尾约 8s；断言约 0.2s、截图约 0.5s、每个 `tapOn` 2~8s。给所有 `tapOn` 加 `waitToSettleTimeoutMs: 500` 后单次省 4~5s，但 3 次里失败 1 次：点“早盘”后列表还在加载，按位置点第一场点空了 | 不要整体缩短；要缩就只在**点击后紧跟显式等待**的地方用，并且位置点击前先 `extendedWaitUntil` 等列表出现。每次报告的“耗时分解”可以看到时间花在哪 |
 
 ### 已排除的怀疑（实测后确认**不是**问题）
 - "中文被丢和输入法有关"（M1 的实验）：默认输入法为搜狗时丢字；**临时切到 Gboard 后结果相同**（输入 `中文abc` 只剩 `abc`），所以与输入法无关，是 Maestro 对非 ASCII 的处理问题。
@@ -97,6 +98,7 @@
 | K17 | **有 product flavor 时 `assembleDebug` 会构建所有 flavor，APK 路径也不对**（Notes 有 foss / gplay） | 模板写死 `assembleDebug` 与 `app-debug.apk` | 识别 flavor，生成 `assemble<Flavor>Debug`，并提示可改；多 flavorDimensions 时提醒手动确认 |
 | K18 | **APK 文件名不可预测**：Notes 实际是 `notes-13-foss-debug.apk`（自定义 archivesName + 版本号），而不是 `app-foss-debug.apk` | 把文件名写死 | `APK_PATH` 支持通配符（`…/foss/debug/*.apk`），构建后取最新一个 |
 | K19 | **应用模块检测依赖插件 id 字符串**：Notes 用版本目录别名 `alias(libs.plugins.android)`，文本里没有 `com.android.application` | 判据错 | 改为以 `applicationId` 是否存在为准（库模块没有它） |
+| K20 | **`FLOW_GLOBS` 未加引号，`*/*.yaml` 被提前展开**：某个真实 Flutter 项目上实测 `--list` 和批量运行都报“没有找到可运行的 flow” | `for g in $FLOW_GLOBS` 让通配符先在**项目根目录**展开，匹配到 `app/pubspec.yaml` 之类，拼成 `.maestro/app/pubspec.yaml` 后不存在 | 先按空白拆成数组再遍历（`read -r -a`）；`selftest/globs.sh` 回归（不需要设备） |
 
 > 经验：**脚本里 `$VAR` 后面紧跟中文标点时一律写成 `${VAR}`**；`install.sh` 不检查这点，请在写新脚本时自查。
 

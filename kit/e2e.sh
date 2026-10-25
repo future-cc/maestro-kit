@@ -99,7 +99,9 @@ elif [ -f "$TARGET" ]; then
   FLOWS=("$TARGET")
 elif [ -d "$TARGET" ]; then
   if [ "${TARGET%/}" = ".maestro" ]; then
-    for g in $FLOW_GLOBS; do
+    # 按空白拆成数组再遍历：直接 for g in $FLOW_GLOBS 会让 */*.yaml 先在当前目录被展开（匹配到 app/pubspec.yaml 之类）
+    read -r -a GLOBS <<< "$FLOW_GLOBS"
+    for g in ${GLOBS[@]+"${GLOBS[@]}"}; do
       for f in .maestro/$g; do
         [ -f "$f" ] || continue
         case "$f" in .maestro/subflows/*|.maestro/kit/*|.maestro/reports/*) continue ;; esac
@@ -335,6 +337,9 @@ LOGCAT_PID=$!
 
 CODE=0; N=0; TOTAL=${#FLOWS[@]}
 : > "$OUT_ABS/maestro_output.txt"
+# 毫秒时间戳（perl 随 macOS 自带；没有就退回到秒）。用于在摘要里拆分“钩子 / Maestro 总耗时 / 步骤耗时”
+now_ms() { perl -MTime::HiRes=time -e 'printf "%.0f", time*1000' 2>/dev/null || echo $(( $(date +%s) * 1000 )); }
+: > "$OUT_ABS/timing.tsv"
 # 把 config 里的 BLOCK_PATTERNS 交给摘要脚本做“被验证拦截”归类
 export E2E_BLOCK_PATTERNS="$BLOCK_PATTERNS" E2E_APP_ID="$APP_ID"
 for F in "${FLOWS[@]}"; do
@@ -342,7 +347,9 @@ for F in "${FLOWS[@]}"; do
   echo; echo "===== [$N/$TOTAL] $F ====="
   # 每个 flow 运行前的钩子（e2e.config 的 PRE_FLOW_CMD，shell 语法；ANDROID_SERIAL 已导出，adb 默认指向当前设备）。
   # 用途：个别手机（如小米 HyperOS）上 Maestro 的 launchApp 到不了前台，可在这里用 adb 先启动 App
+  T0=$(now_ms)
   if [ -n "$PRE_FLOW_CMD" ]; then ( eval "$PRE_FLOW_CMD" ) >/dev/null 2>&1 || echo "警告: PRE_FLOW_CMD 返回非 0" >&2; fi
+  T1=$(now_ms)
   # Maestro 一次跑多个 flow 不打印逐步进度，所以逐个 flow 单独运行；--no-ansi 让 tee 下输出保持纯文本
   maestro test ${UDID_ARGS[@]+"${UDID_ARGS[@]}"} \
     ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${PASS_ARGS[@]+"${PASS_ARGS[@]}"} "$F" \
@@ -353,6 +360,7 @@ for F in "${FLOWS[@]}"; do
 !!! flow 超过 ${TIMEOUT_SEC}s，已强制终止: $F" | tee -a "$OUT_ABS/maestro_output.txt"; fi ) >/dev/null 2>&1 &
   WD=$!
   wait "$MPID"; RC=$?
+  T2=$(now_ms); printf '%s\t%s\t%s\n' "$NAME" "$((T1-T0))" "$((T2-T1))" >> "$OUT_ABS/timing.tsv"
   pkill -P "$WD" 2>/dev/null; kill "$WD" 2>/dev/null
   [ "$RC" -ne 0 ] && CODE=1
   [ -f "$OUT_ABS/.timeout" ] && break

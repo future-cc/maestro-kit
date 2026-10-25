@@ -297,6 +297,15 @@ def main():
         md += ["", "未找到任何 flow 产物。请查看 `maestro_output.txt`（可能是设备未连接、flow 语法错误、启动失败或被超时终止）。"]
         h.append("<p class='bad'>未找到 flow 产物，请查看 maestro_output.txt</p>")
 
+    # timing.tsv（e2e.sh 写）：flow名 / 运行前钩子ms / Maestro 整个进程 ms
+    timing = {}
+    try:
+        for ln in open(os.path.join(OUT, "timing.tsv"), encoding="utf-8"):
+            parts = ln.rstrip("\n").split("\t")
+            if len(parts) == 3:
+                timing[parts[0]] = (int(parts[1]), int(parts[2]))
+    except (OSError, ValueError):
+        pass
     results = []
     total_warn = 0
     for fd in flows:
@@ -307,6 +316,12 @@ def main():
         total_ms = sum(s["ms"] or 0 for s in steps)
         results.append({"name": name, "failed": bool(failed), "category": None, "failed_step": None, "error": None, "steps": len(steps), "duration_s": round(total_ms / 1000, 1), "warned_steps": len([s for s in steps if s["status"] == "WARNED"])})
         md += ["", f"## {name}：{'失败' if failed else '通过'}（{len(steps)} 步，{total_ms/1000:.1f}s）", ""]
+        if name in timing:
+            pre_ms, wall_ms = timing[name]
+            over_ms = max(wall_ms - total_ms, 0)
+            results[-1]["timing_s"] = {"pre_flow_hook": round(pre_ms / 1000, 1), "maestro_total": round(wall_ms / 1000, 1),
+                                       "steps": round(total_ms / 1000, 1), "maestro_overhead": round(over_ms / 1000, 1)}
+            md += [f"耗时分解：运行前钩子 {pre_ms/1000:.1f}s + Maestro 进程 {wall_ms/1000:.1f}s（其中各步骤 {total_ms/1000:.1f}s，启动/收尾开销约 {over_ms/1000:.1f}s）", ""]
         md += ["| # | 步骤 | 状态 | 耗时ms | 截图 |", "|---|---|---|---|---|"]
         h.append(f"<h2>{html.escape(name)} — <span class='{'bad' if failed else 'ok'}'>{'失败' if failed else '通过'}</span> <small>({len(steps)} 步, {total_ms/1000:.1f}s)</small></h2>")
         h.append("<table><tr><th>#</th><th>步骤</th><th>状态</th><th>耗时</th><th>截图</th></tr>")
