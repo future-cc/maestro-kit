@@ -15,6 +15,9 @@
 #   --devices a,b      并行：把 flow 轮流分给这些设备，各自独立运行并生成子报告，最后合并（每台设备的 App 状态需一致）
 #   --prep-device      运行前准备设备：确认沉浸模式提示、关闭三项动画（也可在 e2e.config 设 PREP_DEVICE=1）
 #                      e2e.config 里设 PREP_IME="<包名>/<服务类>" 会在运行期间临时切换输入法，结束后自动恢复（中文拼音输入法会把英文输入转成汉字）
+#   --repeat N         稳定性：每个 flow 连续跑 N 次，每次独立报告；汇总通过率与失败原因（由 e2e_repeat.py 编排）
+#   --retry-failed K   稳定性：某次失败后自动重跑最多 K 次；重跑才通过的记为“不稳定(flaky)”，不算通过
+#                      （新用例要连续 20 次全过才入回归库：--repeat 20；不能与 --devices 同用）
 #   --no-notify        结束时不弹通知
 #   --no-lint          运行前不做 lint
 #   其余参数原样透传给 maestro test（如 -e KEY=VAL）
@@ -22,6 +25,7 @@
 # 环境变量: E2E_PROJECT_ROOT 指定项目根（默认按 kit 位置推导为 kit/../..）；ANDROID_SERIAL 指定设备；E2E_TIMEOUT 每个 flow 超时秒数（默认读配置，否则 900）
 # 配置: .maestro/e2e.config（KEY=VALUE，shell 语法）；.maestro/e2e.env 里的 KEY=VAL 会自动作为 -e 传入
 # 产物: .maestro/reports/<时间>/{summary.md,report.html,screenshots/,logcat.txt,maestro_output.txt,artifacts/}
+#       --repeat/--retry-failed 时: .maestro/reports/<时间>_repeat/{summary.md,result.json,runs/<flow>/rNN_aK/...}
 # 退出码: 0 全部通过 | 1 有失败 | 124 有 flow 超时被终止 | 2 用法/环境错误（设备、配置、构建）
 set -u
 
@@ -36,10 +40,12 @@ cd "$ROOT" || exit 2
 APP_ID=""; BUILD_CMD=""; APK_PATH=""; FLOW_GLOBS="*/*.yaml"; FLOW_TIMEOUT=900
 NOTIFY=1; ENV_FILE=".maestro/e2e.env"; BLOCK_PATTERNS=""; LINT_CLEARSTATE_BLOCK=""; PREP_DEVICE=0; PREP_IME=""
 [ -f .maestro/e2e.config ] && . .maestro/e2e.config
+# 稳定性编排的子运行：输入法/动画等设备准备已由父进程做过一次，这里不再重复
+[ -n "${E2E_SKIP_PREP:-}" ] && { PREP_IME=""; PREP_DEVICE=0; }
 TIMEOUT_SEC="${E2E_TIMEOUT:-$FLOW_TIMEOUT}"
 
 # ---------- 参数 ----------
-DEVICES=""; TARGET=""; DO_BUILD=0; DO_LIST=0; LINT_ONLY=0; STRICT=0; DO_LINT=1; TAGS=""; EXCL_TAGS=""
+REPEAT=1; RETRY=0; DEVICES=""; TARGET=""; DO_BUILD=0; DO_LIST=0; LINT_ONLY=0; STRICT=0; DO_LINT=1; TAGS=""; EXCL_TAGS=""
 PASS_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -50,6 +56,8 @@ while [ $# -gt 0 ]; do
     --no-lint) DO_LINT=0 ;;
     --no-notify) NOTIFY=0 ;;
     --prep-device) PREP_DEVICE=1 ;;
+    --repeat) shift; REPEAT="${1:-}" ;;
+    --retry-failed) shift; RETRY="${1:-}" ;;
     --devices) shift; DEVICES="${1:-}" ;;
     --tags) shift; TAGS="${1:-}" ;;
     --exclude-tags) shift; EXCL_TAGS="${1:-}" ;;
@@ -77,6 +85,10 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 die() { echo "错误: $*" >&2; exit 2; }
+case "$REPEAT" in ''|*[!0-9]*) die "--repeat 需要正整数（得到 '${REPEAT}'）" ;; esac
+case "$RETRY" in ''|*[!0-9]*) die "--retry-failed 需要非负整数（得到 '${RETRY}'）" ;; esac
+[ "$REPEAT" -ge 1 ] || die "--repeat 至少为 1"
+[ "$REPEAT" -gt 1 ] || [ "$RETRY" -gt 0 ] && [ -n "$DEVICES" ] && die "--repeat / --retry-failed 暂不支持与 --devices 同用（并行 + 重复未实现）"
 
 # ---------- flow 列表 ----------
 FLOWS=()
@@ -294,6 +306,23 @@ fi
 if [ -n "$APP_ID" ]; then
   "${ADB[@]}" shell pm list packages 2>/dev/null | grep -q "package:$APP_ID\$" \
     || die "设备上没有安装 ${APP_ID}，请先构建安装（可加 --build）"
+fi
+
+# ---------- 稳定性模式：重复 / 失败重跑（交给 Python 编排，每次运行仍是独立的 e2e.sh）----------
+if [ "$REPEAT" -gt 1 ] || [ "$RETRY" -gt 0 ]; then
+  command -v python3 >/dev/null 2>&1 || die "稳定性模式需要 python3"
+  OUT="${E2E_REPORT_DIR:-.maestro/reports/$(date +%Y%m%d_%H%M%S)${ANDROID_SERIAL:+_${ANDROID_SERIAL}}_repeat}"
+  mkdir -p "$OUT"; OUT_ABS="$(cd "$OUT" && pwd)"
+  echo "===== 稳定性模式：${#FLOWS[@]} 个 flow × ${REPEAT} 次，失败自动重跑 ${RETRY} 次 ====="
+  python3 -I "$KIT_DIR/e2e_repeat.py" --out "$OUT_ABS" --e2e "$KIT_DIR/e2e.sh" --repeat "$REPEAT" --retry "$RETRY" \
+    --flows "${FLOWS[@]}" -- ${PASS_ARGS[@]+"${PASS_ARGS[@]}"}
+  CODE=$?
+  echo "摘要: $OUT/summary.md"
+  if [ "$NOTIFY" -eq 1 ] && command -v osascript >/dev/null 2>&1; then
+    case "$CODE" in 0) MSG="全部稳定通过";; 124) MSG="有运行超时";; *) MSG="有不稳定或失败";; esac
+    osascript -e "display notification \"${MSG}（稳定性 ×${REPEAT}）\" with title \"E2E 测试结束\" sound name \"Glass\"" >/dev/null 2>&1 || true
+  fi
+  exit "$CODE"
 fi
 
 # ---------- 运行 ----------

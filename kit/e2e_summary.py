@@ -292,7 +292,7 @@ def main():
         shots = copy_shots(fd, name)
         failed = [s for s in steps if s["status"] not in OK_STATES]
         total_ms = sum(s["ms"] or 0 for s in steps)
-        results.append((name, bool(failed)))
+        results.append({"name": name, "failed": bool(failed), "category": None, "failed_step": None, "error": None, "steps": len(steps), "duration_s": round(total_ms / 1000, 1), "warned_steps": len([s for s in steps if s["status"] == "WARNED"])})
         md += ["", f"## {name}：{'失败' if failed else '通过'}（{len(steps)} 步，{total_ms/1000:.1f}s）", ""]
         md += ["| # | 步骤 | 状态 | 耗时ms | 截图 |", "|---|---|---|---|---|"]
         h.append(f"<h2>{html.escape(name)} — <span class='{'bad' if failed else 'ok'}'>{'失败' if failed else '通过'}</span> <small>({len(steps)} 步, {total_ms/1000:.1f}s)</small></h2>")
@@ -328,6 +328,7 @@ def main():
                 if first:
                     f0["error"] = first[:300] + "（取自控制台输出，commands.json 中该步骤状态为 " + f0["status"] + "）"
             cat, advice = classify(f0, sl, errs)
+            results[-1].update({"category": cat, "failed_step": f0["desc"], "error": (f0.get("error") or "")[:300]})
             md += [
                 "",
                 f"### 失败详情（{name}）",
@@ -366,7 +367,7 @@ def main():
     open(os.path.join(OUT, "report.html"), "w", encoding="utf-8").write("\n".join(h))
     # 机器可读的结果，方便 CI 或其他脚本消费
     json.dump(
-        {"exit_code": CODE, "verdict": verdict, "flows": [{"name": n, "failed": f} for n, f in results], "app_errors": errs},
+        {"exit_code": CODE, "verdict": verdict, "flows": results, "app_errors": errs},
         open(os.path.join(OUT, "result.json"), "w", encoding="utf-8"),
         ensure_ascii=False,
         indent=2,
