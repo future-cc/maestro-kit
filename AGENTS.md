@@ -3,6 +3,17 @@
 你在一台**新电脑**上拿到了这个仓库，任务通常是：把 Maestro 测试环境配好，并把套件装进某个 Android（原生 / Flutter）项目。
 按下面的顺序做。**每一步先读输出再决定下一步，不要凭印象。** 人读的说明见 [docs/SETUP.md](docs/SETUP.md)，已知问题见 [docs/FINDINGS.md](docs/FINDINGS.md)。
 
+## 按任务查文档（先读这张表，再读对应文档）
+| 你要做的 | 读哪份 |
+|---|---|
+| 配环境、装套件 | 本文“配置步骤”、[docs/SETUP.md](docs/SETUP.md) |
+| 需求做完后怎么走完整流程（探索→写 flow→入库→回归→验收） | [docs/WORKFLOW.md](docs/WORKFLOW.md) |
+| 判断“这件事该脚本、该 Claude 探索、该排查还是该人看”；失败了怎么排查 | [docs/ROUTING.md](docs/ROUTING.md) |
+| 要开发改代码：怎么加控件标识、让启动状态确定 | [docs/DEV_CONVENTIONS.md](docs/DEV_CONVENTIONS.md) |
+| 要向团队要测试环境/账号/风控放行/数据重置 | [docs/TEST_ENV_REQUIREMENTS.md](docs/TEST_ENV_REQUIREMENTS.md) |
+| 最后给人验收 | [docs/ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md) |
+| 遇到怪现象 | [docs/FINDINGS.md](docs/FINDINGS.md)、[docs/STABILITY_BASELINE.md](docs/STABILITY_BASELINE.md) |
+
 ## 仓库里有什么
 | 路径 | 作用 |
 |---|---|
@@ -66,6 +77,7 @@ bash .maestro/kit/e2e.sh <flow> --no-notify    # --no-notify：结束时不弹�
 ```bash
 bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 ```
+（与 [docs/WORKFLOW.md](docs/WORKFLOW.md) 第 5 步同一条命令。`--retry-failed 1` 只用来把偶发失败标成“不稳定”；不带它，失败就是失败，同样不能入库。）
 - 每次运行都是独立的一次 `e2e.sh`，报告在 `.maestro/reports/<时间>_repeat/runs/<用例>/rNN_aK/`；汇总看 `<时间>_repeat/summary.md`（给人/AI 读）和 `result.json`（机器读）。
 - **第一次就通过才算通过**；第一次失败、重跑才通过 = “不稳定(flaky)”，**不算通过**，也不能入库。
 - 一个用例的结论：全部通过=稳定通过；全部失败=稳定失败；其余=不稳定。`summary.md` 会写“是否达到入库门槛（20 次）”。
