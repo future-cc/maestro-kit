@@ -19,14 +19,14 @@
 #   --no-lint          运行前不做 lint
 #   其余参数原样透传给 maestro test（如 -e KEY=VAL）
 #
-# 环境变量: ANDROID_SERIAL 指定设备；E2E_TIMEOUT 每个 flow 超时秒数（默认读配置，否则 900）
+# 环境变量: E2E_PROJECT_ROOT 指定项目根（默认按 kit 位置推导为 kit/../..）；ANDROID_SERIAL 指定设备；E2E_TIMEOUT 每个 flow 超时秒数（默认读配置，否则 900）
 # 配置: .maestro/e2e.config（KEY=VALUE，shell 语法）；.maestro/e2e.env 里的 KEY=VAL 会自动作为 -e 传入
 # 产物: .maestro/reports/<时间>/{summary.md,report.html,screenshots/,logcat.txt,maestro_output.txt,artifacts/}
 # 退出码: 0 全部通过 | 1 有失败 | 124 有 flow 超时被终止 | 2 用法/环境错误（设备、配置、构建）
 set -u
 
 KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$KIT_DIR/../.." && pwd)"   # 项目根 = <root>/.maestro/kit/..
+ROOT="${E2E_PROJECT_ROOT:-$(cd "$KIT_DIR/../.." && pwd)}"   # 项目根 = <root>/.maestro/kit/..；可用 E2E_PROJECT_ROOT 指定（套件仓库自测用）
 cd "$ROOT" || exit 2
 
 # 环境自检：bash .maestro/kit/e2e.sh --doctor
