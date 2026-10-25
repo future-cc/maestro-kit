@@ -1,0 +1,7 @@
+# note: 一定失败：永远为假
+appId: com.android.settings
+---
+- assertTrue:
+    label: 条件恒为假
+    condition: ${1 == 2}
+- takeScreenshot: STAB_always_fail

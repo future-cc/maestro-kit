@@ -1,0 +1,7 @@
+# note: 一定通过：永远为真
+appId: com.android.settings
+---
+- assertTrue:
+    label: 条件恒为真
+    condition: ${1 == 1}
+- takeScreenshot: STAB_always_pass

@@ -35,7 +35,7 @@ ANDROID_SERIAL=emulator-5554 bash selftest/run.sh F0         # 只跑名字含 F
 - **并行 `--devices a,b`**：需要两台设备，这里只有一台。
 - **`--build`**、`install.sh`、`doctor.sh`：不在自测范围内。
 - **横屏、录屏、`assertScreenshot`、定位、飞行模式等设备级命令**：没有搬进来（旧自测里有，但它们验证的是 Maestro 本身而不是套件，且会改设备状态）。
-- **失败后重试、重复运行、不稳定判定**：见 `kit/e2e.sh` 的 `--repeat` / `--retry-failed`，自测在 `selftest/` 的 stability 用例里（第 2 步加入）。
+- **重复运行、失败重跑、不稳定判定**：由单独的 `bash selftest/stability.sh` 验证（一定通过 / 一定失败 / 随机约一半通过三条用例，要求汇总分别判为 稳定通过 / 稳定失败 / 不稳定）。它不含在 `run.sh` 里，因为要多跑几分钟，且随机用例有极小的误报概率（见脚本注释）。
 - 用例依赖“设置”首屏的 id（`homepage_title`、`search_action_bar_title`）；这是在 Android 16（API 36）模拟器上看到的，别的系统版本可能不同，此时先跑 P01，它红了就是 id 变了。
 
 ## 已知陷阱（写用例时遇到的）

@@ -1,0 +1,7 @@
+# note: 随机：约一半通过（JS Math.random）
+appId: com.android.settings
+---
+- assertTrue:
+    label: 随机，约 50% 为真
+    condition: ${Math.random() < 0.5}
+- takeScreenshot: STAB_random_half
