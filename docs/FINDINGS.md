@@ -45,6 +45,8 @@
 
 | M31 | **`assertTrue` 条件里的 JS 异常被吞成“假”**：`assertTrue: ${notDefined == 1}` 报的是 `Assertion is false: false is true`，没有 ReferenceError；而 `evalScript` / `runScript` 里的同类错误会报脚本错误（实测 2.11.0） | 条件里写错变量名，只会看到“断言不成立”，容易当成 App 的问题；套件归类为 `assertion_failed` 而不是 `script_error` | 记录在案；变量是否传入可先用 `evalScript` 检查；自测 F04（assertTrue）与 E03/F05/F06（script_error）对照 |
 | M32 | **M1（中文输入被丢）在最近一次实测中没有复现**：Android 16 模拟器 + Gboard + Maestro 2.11.0，向“设置”搜索框 `inputText: "中文abc"`，截图确认输入框里是完整的 `中文abc`；M1 当时的环境是另一台设备/应用，**原因未查清**（可能与系统版本、被测应用的输入框类型有关） | 不能再断言“Maestro 一定丢中文”，也不能断言“一定不丢” | lint W008 仍保留（保守）；自测 I02 是哨兵：断言完整 `中文abc` 可见，环境变了会变红。注意不要断言 `abc`——键盘候选条上也有，会假通过 |
+| M33 | **软键盘会盖住 Compose 页面右下角的保存按钮**：待办 App 新建页输入标题和描述后，Gboard 弹出，“Save task” 悬浮按钮被盖住，`tapOn` 报 `Element not found`（同一条用例在另一次模拟器状态下通过；该模拟器当前 `show_ime_with_hard_keyboard=1`，之前的值未记录）。基线里 30 次全失败 | 用例结果取决于“软键盘是否显示”这个设备状态，不是 App 或脚本的偶发问题 | 输入后 `hideKeyboard`（键盘会显示时有效；10 次验证通过），但键盘没显示时它会退出页面（M27）——要让测试设备键盘行为固定；见 docs/STABILITY_BASELINE.md |
+| M34 | **ANR（应用无响应）没有被识别为崩溃类**：笔记 App 冷启动超时，logcat 有 `ANR in <包名>` + `Reason: … failed to complete startup`，摘要把它归类为 `assertion_failed`，真实原因要自己翻 logcat（基线 30 次里 1 次） | 读摘要会误判成断言问题 | 记录在案；套件尚未支持 ANR 归类（待办）。排查时遇到“截图是别的 App 的页面”先 grep `ANR in` |
 
 ### 已排除的怀疑（实测后确认**不是**问题）
 - "中文被丢和输入法有关"（M1 的实验）：默认输入法为搜狗时丢字；**临时切到 Gboard 后结果相同**（输入 `中文abc` 只剩 `abc`），所以与输入法无关，是 Maestro 对非 ASCII 的处理问题。
@@ -102,7 +104,7 @@
 
 - **示例 Flutter 项目的一个用例在一次回归里失败，紧接着重跑 3 次全部通过**（共 4 次运行，1 次失败）。失败截图显示：App 冷启动后停在了一个和预期首页不同的页面，并盖着一个营销弹窗，所以等待首页元素超时。
 - 这**不是 Maestro 或套件的问题**，而是 **App 冷启动落点和弹窗不固定**（上一轮测试把 App 留在了某个页面，启动后又弹出营销弹窗）。套件的报告在这次失败里工作正常：失败截图、归类 `assertion_failed`、日志片段都能直接定位原因。
-- **对写 flow 的启示**：不要假设冷启动一定落在首页；启动后要先把 App 带到确定状态（关弹窗 / 回首页），再做断言。这类偶发只有靠**连续多次运行**才能量化，这也是目前没做的"稳定性测试"。
+- **对写 flow 的启示**：不要假设冷启动一定落在首页；启动后要先把 App 带到确定状态（关弹窗 / 回首页），再做断言。这类偶发只有靠**连续多次运行**才能量化，这也是“稳定性测试”要解决的问题：现在已有 `--repeat` / `--retry-failed`，第一次基线见 [STABILITY_BASELINE.md](STABILITY_BASELINE.md)。
 
 ## 三、本次没有覆盖到的情况（不假装"全部"）
 
@@ -120,7 +122,7 @@
 - **`clearState`**：故意没测（会让设备失去授信）。
 - **Maestro Cloud / CI**：CI 里每次是新设备，会遇到"设备授信"问题（见使用该套件的项目自己的文档）。
 - **`--analyze`（AI Insights）、Maestro Studio、Maestro MCP**：未评估。
-- **崩溃类型**：只模拟了 SIGSEGV；ANR、OOM、Dart 未捕获异常的日志格式未逐一验证。
+- **崩溃类型**：只模拟了 SIGSEGV；OOM、Dart 未捕获异常的日志格式未逐一验证。ANR 只见过一个样本（M34），套件尚未识别。
 - **日志解析**只认 Flutter dio 的 `[http-error]`；okhttp / Retrofit / Ktor 的格式未适配。
 - **时区**：失败时间点日志切片按宿主机本地时间对齐，模拟器时区不同会对不上。
 - **测试范围**：只在一个示例 Flutter 项目的登录页、首页、个人页，且连线上环境（只读），没碰支付类操作和列表交互。
