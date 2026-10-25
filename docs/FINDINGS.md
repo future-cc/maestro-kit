@@ -43,6 +43,9 @@
 | M29 | **`extendedWaitUntil` 的 `visible: ".+"`（任意文字）会被上一个 App 的内容满足**：`launchApp` 刚发出，界面还是原来的 App，等待立刻通过，随后的截图截到的是两个 App 的切换过渡画面（实测：半个上一个 App 的页面滑出）。套件自己的 `launch_app.yaml` 模板就这样写过 | "等首屏"等于没等，截图和断言撞上旧界面 | lint **W011**；模板已改为等被测 App 自己的元素（resource-id 或确定的文案） |
 | M30 | **元素树会混入输入法自己的窗口节点**（实测有搜狗的 `com.sohu.inputmethod.sogou:id/...` 约 8 个）；文本选择器若恰好和输入法界面文字重合会误命中 | 键盘弹出时 `hierarchy` 变长、选择器可能歧义 | 记录在案；优先用被测 App 的 id |
 
+| M31 | **`assertTrue` 条件里的 JS 异常被吞成“假”**：`assertTrue: ${notDefined == 1}` 报的是 `Assertion is false: false is true`，没有 ReferenceError；而 `evalScript` / `runScript` 里的同类错误会报脚本错误（实测 2.11.0） | 条件里写错变量名，只会看到“断言不成立”，容易当成 App 的问题；套件归类为 `assertion_failed` 而不是 `script_error` | 记录在案；变量是否传入可先用 `evalScript` 检查；自测 F04（assertTrue）与 E03/F05/F06（script_error）对照 |
+| M32 | **M1（中文输入被丢）在最近一次实测中没有复现**：Android 16 模拟器 + Gboard + Maestro 2.11.0，向“设置”搜索框 `inputText: "中文abc"`，截图确认输入框里是完整的 `中文abc`；M1 当时的环境是另一台设备/应用，**原因未查清**（可能与系统版本、被测应用的输入框类型有关） | 不能再断言“Maestro 一定丢中文”，也不能断言“一定不丢” | lint W008 仍保留（保守）；自测 I02 是哨兵：断言完整 `中文abc` 可见，环境变了会变红。注意不要断言 `abc`——键盘候选条上也有，会假通过 |
+
 ### 已排除的怀疑（实测后确认**不是**问题）
 - "中文被丢和输入法有关"（M1 的实验）：默认输入法为搜狗时丢字；**临时切到 Gboard 后结果相同**（输入 `中文abc` 只剩 `abc`），所以与输入法无关，是 Maestro 对非 ASCII 的处理问题。
   - 系统自带的办法都走不通：`adb shell input text` 只支持 ASCII；`cmd clipboard` 在 API 35 上没有可用子命令。
