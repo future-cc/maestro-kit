@@ -149,6 +149,7 @@ def app_errors(lines):
     app_pids = set(re.findall(r"Start proc (\d+):" + re.escape(app) + r"/", "\n".join(lines))) if app else set()
     fatal_pending = None   # 刚看到 FATAL EXCEPTION，等待下一行 "Process: <包名>"
     native_pkg = ""        # 最近一个 native crash 块里的包名（Cmdline: / >>> pkg <<<）
+    anr_idx, anr_pkg = None, ""   # 刚看到 "ANR in <包名>"，等下面的 "Reason:" 行补充原因
     for raw in lines:
         t = raw.strip()
         hit = None
@@ -175,6 +176,16 @@ def app_errors(lines):
         elif re.search(r"\bsignal \d+ \(SIG\w+\)", t) and "DEBUG" in t:
             if not app or native_pkg == app:
                 hit = "原生崩溃: " + t.split("DEBUG", 1)[-1].lstrip("): ").strip() + (f"（{native_pkg}）" if native_pkg else "")
+        elif re.search(r"\bANR in (\S+)", t) and "ActivityManager" in t:
+            pkg = re.search(r"\bANR in (\S+)", t).group(1)
+            if not app or pkg == app:
+                anr_idx = len(out)
+                hit = f"ANR: 应用无响应（{pkg}）"
+                anr_pkg = pkg
+        elif anr_idx is not None and "Reason:" in t and "ActivityManager" in t:
+            out[anr_idx] = f"ANR: 应用无响应（{anr_pkg}）：" + t.split("Reason:", 1)[1].strip()[:120]
+            seen.add(out[anr_idx])
+            anr_idx = None
         elif re.search(r"Process (\S+) \(pid \d+\) has died", t) and "ActivityManager" in t:
             pkg = re.search(r"Process (\S+) \(pid \d+\) has died", t).group(1)
             if not app or pkg == app:
@@ -234,6 +245,8 @@ def classify(step, flow_log, errs, shots_text=""):
     msg = (step.get("error") or "") + " " + " ".join(flow_log)
     if BLOCK and re.search("|".join(BLOCK), msg + shots_text):
         return ("blocked_by_verification", "被验证码/设备校验/风控拦截。脚本不处理也不要绕过，请让后端放行测试账号或由人工先完成授信。")
+    if any(e.startswith("ANR") for e in errs):
+        return ("app_anr", "测试期间被测 App 无响应（ANR），常见于冷启动超时。先看“App 运行日志中的异常”里的原因，再看失败截图——它可能是别的 App（系统在 ANR 后退回了上一个界面）；这是 App 或设备卡顿的问题，不要改 flow。")
     if any(e.startswith(("崩溃", "原生崩溃", "进程退出")) for e in errs):
         return ("app_crash", "测试期间 App 崩溃或退出。先看“App 运行日志中的异常”，再看 logcat；这是 App 的问题，不要改 flow。")
     e = step.get("error") or ""

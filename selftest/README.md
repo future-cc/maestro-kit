@@ -30,6 +30,9 @@ ANDROID_SERIAL=emulator-5554 bash selftest/run.sh F0         # 只跑名字含 F
 | 设备不在线 → 2 | U02 |
 | lint：W001–W005、W007–W012（W006 规则不存在）、I001–I005、`lint-ignore` | L01–L17 |
 
+## 不需要设备的单元自测
+`python3 -I selftest/test_summary.py`：用合成的 commands.json 和 logcat 验证摘要脚本的失败归类（目前覆盖 ANR：被测 App 的 ANR 归 `app_anr`，别的 App 的 ANR 不算）。
+
 ## 没覆盖（如实）
 - **崩溃注入**（`inject: crash@N`）：需要 `debuggable` 的包才能 `run-as kill -SEGV`，系统“设置”不是。需要在带 debug 包的项目里验证。
 - **并行 `--devices a,b`**：需要两台设备，这里只有一台。

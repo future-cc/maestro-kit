@@ -33,11 +33,12 @@ bash .maestro/kit/e2e.sh --no-notify                 # 再跑全量
 | `assertion_failed` | 页面和预期不一致；或后端返回错误导致没渲染 | 看截图；看摘要里的“接口错误” | 先看是不是 App/后端的真问题 |
 | `script_error` | JS 变量没传入、拼写错误 | 检查 `-e` / `e2e.env` | 用例 |
 | `app_crash` | App 崩溃 | 看日志里的崩溃栈 | 开发（不是用例问题，别改用例） |
+| `app_anr` | 被测 App 无响应（ANR），常见于冷启动超时；失败截图可能是别的 App（系统退回了上一个界面） | 看摘要里“ANR”那行的原因；`grep "ANR in" logcat.txt`；确认模拟器当时是否卡顿 | 开发 / 环境（不是用例问题） |
 | `launch_failed` | App 没装、包名错、设备异常 | `--doctor`；确认已安装 | 环境 |
 | `timeout` / 整体超时 | 网络慢、页面卡住 | 看截图和接口错误 | 环境或 App |
 | `blocked_by_verification` | 被验证码/设备校验/风控拦住 | **停下，不绕过** | 后端对测试账号放行（见 [TEST_ENV_REQUIREMENTS.md](TEST_ENV_REQUIREMENTS.md)） |
 | `unknown` | 未归类 | 读 `maestro_output.txt` 和截图 | 人 |
-| **（任何归类）但失败截图里不是被测 App 的页面** | App 没起来：启动超时（ANR）、崩溃后系统退回了上一个 App。**套件目前认不出 ANR，会误归为 `assertion_failed`**（FINDINGS M34） | `grep "ANR in\|FATAL" logcat.txt`；看 App 进程是否启动 | 开发 / 环境 |
+| **失败截图里不是被测 App 的页面** | App 没起来：启动超时（ANR，现在会归为 `app_anr`）、崩溃后系统退回了上一个 App | 看 `app_anr` / `app_crash` 的日志行；`grep "ANR in\|FATAL" logcat.txt`；看 App 进程是否启动 | 开发 / 环境 |
 
 ### “有时过有时不过”（不稳定）
 1. 用 `e2e.sh <flow> --repeat 20 --no-notify` 量化到底多少次失败、失败原因是否相同（`<时间>_repeat/summary.md`）。

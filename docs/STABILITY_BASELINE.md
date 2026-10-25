@@ -31,7 +31,7 @@
 - 失败截图显示的是**待办 App 的页面**（笔记 App 没起来，系统退回了上一个 App）。
 - logcat：`ANR in org.fossify.notes.debug`，`Reason: Process … failed to complete startup`（冷启动 `clearState` 之后约 30 秒仍没完成启动），该次运行耗时 102 秒。
 - 30 次里只发生 1 次。原因（是模拟器卡顿、应用本身，还是两者）**没有查清**。
-- 套件把它归类为 `assertion_failed`，**归类不准**：套件目前不认 ANR（见 FINDINGS M34），读摘要的人会误以为是断言问题。
+- 基线当时套件把它归类为 `assertion_failed`，**归类不准**（不认 ANR，FINDINGS M34）。此后已补上 ANR 识别：用这次失败的真实现场重新生成摘要，归类为 `app_anr`；单元自测 `selftest/test_summary.py` 覆盖。基线表里的数字仍是当时的原始结果，没有改。
 
 **3. `compose_testtag_id`、`write_note`：30/30。** 抽看了 `compose_testtag_id` 最后一张截图（新建页，id 点击生效）；`write_note` 的结果截图在同一环境下与之前一致。
 

@@ -113,7 +113,7 @@ def flow_verdict(f):
 VERDICT_ZH = {"stable_pass": "稳定通过", "stable_fail": "稳定失败", "unstable": "不稳定(flaky)"}
 CAT_ZH = {
     "element_not_found": "找不到元素", "assertion_failed": "断言不成立", "script_error": "脚本错误",
-    "launch_failed": "启动失败", "app_crash": "App 崩溃", "timeout": "等待超时", "timeout_killed": "整体超时被终止",
+    "launch_failed": "启动失败", "app_crash": "App 崩溃", "app_anr": "App 无响应(ANR)", "timeout": "等待超时", "timeout_killed": "整体超时被终止",
     "blocked_by_verification": "被验证/风控拦截", "env_error": "环境/用法错误", "unknown": "未归类",
 }
 
