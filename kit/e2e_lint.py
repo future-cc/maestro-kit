@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """flow 静态检查：在运行前发现“容易假通过/不稳定/不安全”的写法。只用标准库，逐行分析 YAML。
 
-用法: python3 -I e2e_lint.py [--clearstate-block 关键字,关键字] flow.yaml [...]
+用法: python3 -I e2e_lint.py [--clearstate-block 关键字,关键字] [--tap-block 词,词] flow.yaml [...]
 退出码: 0 无 WARN；1 有 WARN（INFO 不影响退出码）
 忽略: 在命令上一行或命令块内写 `# lint-ignore: W004`（可逗号分隔多个规则）
 
@@ -19,6 +19,9 @@
   I005 使用 hideKeyboard：Android 上软键盘没显示时它会发送返回键，可能直接退出当前页面（实测，模拟器启用硬件键盘时尤其常见）；优先点击页面上一个中性元素来收起焦点
   W012 flow 里还有模板占位文字（“替换成…”）：lint 能通过但实际一定跑不过，必须换成被测 App 的真实元素
   W011 等待/断言的文字是 .+ 或 .*（匹配任意文字）：launchApp 后它会被上一个 App 的内容满足，等于没等，截图还会截到切换过渡画面（实测）
+  W013 点击的文字（text/id，不含 label）里有红线词（--tap-block，来自 e2e.config 的 LINT_TAP_BLOCK，如 存款,取款,转入,退出登录）：只读测试/正式环境不应点它；位置点击检查不到，仍要靠人。确需点击写 `# lint-ignore: W013`
+  W014 百分比坐标写了小数（如 22.5%）：Maestro 只认整数百分比，运行时报 NumberFormatException
+  W015 文字正则里有 \d:\d\d（形如分钟:秒）却没要求后面换行：会匹配到手机状态栏的时钟（如 23:19），点到/等到的不是目标
   I001 步骤没有 label（报告里只能看到命令类型）
   I002 整个 flow 没有 takeScreenshot
   I003 label 里引用了 ${变量}（Maestro 不一定在原始命令里展开，报告以 evaluatedCommand 为准）
@@ -28,13 +31,27 @@ import sys
 
 args = sys.argv[1:]
 block_keys = []
-if args and args[0] == "--clearstate-block":
-    block_keys = [k for k in args[1].split(",") if k]
+tap_block = []
+while args and args[0] in ("--clearstate-block", "--tap-block"):
+    vals = [k.strip() for k in args[1].split(",") if k.strip()]
+    if args[0] == "--clearstate-block":
+        block_keys = vals
+    else:
+        tap_block = vals
     args = args[2:]
 
 CMD_RE = re.compile(r"^(\s*)- (\w+)\s*:?\s*(.*)$")
 NEG = ("assertNotVisible", "notVisible")
 POS = ("assertVisible", "assertTrue", "extendedWaitUntil", "assertWithAI")
+
+
+def selector_texts(chunk):
+    """取出命令里用来定位元素的文字（text:/id: 的值，以及 `- tapOn: "x"` 这种内联写法）。不含 label。"""
+    vals = [m.group(2) for m in re.finditer(r"^\s*(text|id)\s*:\s*['\"]?(.+?)['\"]?\s*$", chunk, re.M)]
+    m = re.match(r"^\s*- \w+\s*:\s*['\"](.+?)['\"]\s*$", chunk.split("\n")[0])
+    if m:
+        vals.append(m.group(1))
+    return vals
 
 
 def lint(path):
@@ -99,6 +116,20 @@ def lint(path):
             if re.search(r"^\s*point\s*:", chunk, re.M) or re.search(r"""tapOn:\s*["']?\d+%?\s*,\s*\d+%?""", chunk):
                 issues.append(("W", "W002", ln, "使用坐标点击，分辨率变化会失效；请改用 id 或文本"))
             prev_target = chunk
+            # W013 红线词（只看定位文字，不看 label，避免“只看不点转入”这类说明触发误报）
+            for tv in selector_texts(chunk):
+                hit = next((w for w in tap_block if w in tv), None)
+                if hit:
+                    issues.append(("W", "W013", ln, f"点击的文字 \"{tv}\" 含红线词 \"{hit}\"（LINT_TAP_BLOCK）：只读/正式环境不应点它；确需点击请在命令上一行写 # lint-ignore: W013"))
+            # W014 百分比坐标写了小数
+            m14 = re.search(r"point\s*:\s*['\"]?\s*([\d.]+)\s*%\s*,\s*([\d.]+)\s*%", chunk)
+            if m14 and ("." in m14.group(1) or "." in m14.group(2)):
+                issues.append(("W", "W014", ln, f"百分比坐标 {m14.group(1)}%,{m14.group(2)}% 含小数，Maestro 只认整数百分比（运行时报 NumberFormatException）"))
+        # W015 正则可能匹配状态栏时钟
+        if cmd in ("tapOn", "longPressOn", "doubleTapOn", "scrollUntilVisible", "assertVisible", "extendedWaitUntil"):
+            for tv in selector_texts(chunk):
+                if re.search(r"\\{1,2}d:\\{1,2}d", tv) and not re.search(r"\\{1,2}n", tv):
+                    issues.append(("W", "W015", ln, f"文字正则 \"{tv}\" 含 \\d:\\d\\d 却没要求后面换行，会匹配到状态栏时钟（如 23:19）；请在后面加 \\n（赛事卡片的描述是“分钟\\n比分…”）"))
         # W009 边缘滑动
         if cmd == "swipe":
             for key in ("start", "end"):

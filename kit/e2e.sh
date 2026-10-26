@@ -38,7 +38,7 @@ cd "$ROOT" || exit 2
 
 # ---------- 配置 ----------
 APP_ID=""; BUILD_CMD=""; APK_PATH=""; FLOW_GLOBS="*/*.yaml"; FLOW_TIMEOUT=900
-NOTIFY=1; ENV_FILE=".maestro/e2e.env"; BLOCK_PATTERNS=""; LINT_CLEARSTATE_BLOCK=""; PREP_DEVICE=0; PREP_IME=""; PRE_FLOW_CMD=""
+NOTIFY=1; ENV_FILE=".maestro/e2e.env"; BLOCK_PATTERNS=""; LINT_CLEARSTATE_BLOCK=""; LINT_TAP_BLOCK=""; PREP_DEVICE=0; PREP_IME=""; PRE_FLOW_CMD=""
 [ -f .maestro/e2e.config ] && . .maestro/e2e.config
 # 稳定性编排的子运行：输入法/动画等设备准备已由父进程做过一次，这里不再重复
 [ -n "${E2E_SKIP_PREP:-}" ] && { PREP_IME=""; PREP_DEVICE=0; }
@@ -161,6 +161,7 @@ if [ $DO_LIST -eq 1 ]; then printf '%s\n' "${FLOWS[@]}"; exit 0; fi
 if [ $DO_LINT -eq 1 ] || [ $LINT_ONLY -eq 1 ]; then
   LINT_ARGS=()
   [ -n "$LINT_CLEARSTATE_BLOCK" ] && LINT_ARGS+=(--clearstate-block "$LINT_CLEARSTATE_BLOCK")
+  [ -n "$LINT_TAP_BLOCK" ] && LINT_ARGS+=(--tap-block "$LINT_TAP_BLOCK")
   python3 -I "$KIT_DIR/e2e_lint.py" ${LINT_ARGS[@]+"${LINT_ARGS[@]}"} "${FLOWS[@]}"
   LRC=$?
   [ $LINT_ONLY -eq 1 ] && exit $LRC
@@ -338,6 +339,18 @@ LOGCAT_PID=$!
 CODE=0; N=0; TOTAL=${#FLOWS[@]}
 : > "$OUT_ABS/maestro_output.txt"
 # 毫秒时间戳（perl 随 macOS 自带；没有就退回到秒）。用于在摘要里拆分“钩子 / Maestro 总耗时 / 步骤耗时”
+# flow 失败后，趁 App 还停在失败时的画面，保存截图和元素树到 failures/<flow>.png|xml（报告里会列出屏幕上的元素）。
+# Maestro 驱动进程残留时 uiautomator dump 会被杀，所以先停掉驱动进程（只停进程，不卸载；下次运行会自动拉起）。
+capture_failure_ui() {
+  local n="$1"; mkdir -p "$OUT_ABS/failures"
+  "${ADB[@]}" shell am force-stop dev.mobile.maestro >/dev/null 2>&1
+  "${ADB[@]}" shell am force-stop dev.mobile.maestro.test >/dev/null 2>&1
+  "${ADB[@]}" exec-out screencap -p > "$OUT_ABS/failures/$n.png" 2>/dev/null
+  ( "${ADB[@]}" exec-out uiautomator dump /dev/stdout > "$OUT_ABS/failures/$n.xml" 2>/dev/null ) &
+  local P=$!; ( sleep 20; kill "$P" 2>/dev/null ) >/dev/null 2>&1 & local W=$!
+  wait "$P" 2>/dev/null; kill "$W" 2>/dev/null; wait "$W" 2>/dev/null
+  grep -q "<hierarchy" "$OUT_ABS/failures/$n.xml" 2>/dev/null || rm -f "$OUT_ABS/failures/$n.xml"
+}
 now_ms() { perl -MTime::HiRes=time -e 'printf "%.0f", time*1000' 2>/dev/null || echo $(( $(date +%s) * 1000 )); }
 : > "$OUT_ABS/timing.tsv"
 # 把 config 里的 BLOCK_PATTERNS 交给摘要脚本做“被验证拦截”归类
@@ -362,7 +375,7 @@ for F in "${FLOWS[@]}"; do
   wait "$MPID"; RC=$?
   T2=$(now_ms); printf '%s\t%s\t%s\n' "$NAME" "$((T1-T0))" "$((T2-T1))" >> "$OUT_ABS/timing.tsv"
   pkill -P "$WD" 2>/dev/null; kill "$WD" 2>/dev/null
-  [ "$RC" -ne 0 ] && CODE=1
+  [ "$RC" -ne 0 ] && { CODE=1; capture_failure_ui "$NAME"; }
   [ -f "$OUT_ABS/.timeout" ] && break
 done
 # 必须先结束 logcat 再 wait：logcat 是永不退出的后台进程，裸 wait 会一直等下去

@@ -22,11 +22,11 @@ FAILED_ASSERT = [
 ]
 
 
-def run_case(logcat_lines):
+def run_case(logcat_lines, commands=None):
     with tempfile.TemporaryDirectory() as d:
         fd = os.path.join(d, "artifacts", "flow1", "t", "flow1")
         os.makedirs(fd)
-        json.dump(FAILED_ASSERT, open(os.path.join(fd, "commands.json"), "w"))
+        json.dump(commands or FAILED_ASSERT, open(os.path.join(fd, "commands.json"), "w"))
         open(os.path.join(d, "logcat.txt"), "w").write("\n".join(logcat_lines) + "\n")
         env = dict(os.environ, E2E_APP_ID=APP)
         subprocess.run([sys.executable, "-I", SUMMARY, d, "1"], env=env, check=True, stdout=subprocess.DEVNULL)
@@ -41,14 +41,23 @@ def anr(pkg):
     ]
 
 
+# 百分比坐标写了小数：Maestro 抛 NumberFormatException（For input string），应归为 script_error 而不是 unknown
+NUM_FMT = [
+    {"command": {"tapOnPointV2Command": {"label": "点位置"}},
+     "metadata": {"status": "FAILED", "timestamp": 1000, "duration": 4,
+                  "error": {"message": 'For input string: "22.5"'}}},
+]
+
 cases = [
     ("被测 App 的 ANR", anr(APP), "app_anr"),
     ("别的 App 的 ANR", anr("com.other.app"), "assertion_failed"),
+    ("百分比小数", [], "script_error", NUM_FMT),
     ("没有 ANR", ["10-25 16:32:00.000 I/ActivityManager(  585): Start proc 1:%s/u0a1" % APP], "assertion_failed"),
 ]
 bad = 0
-for name, lines, want in cases:
-    got = run_case(lines)
+for case in cases:
+    name, lines, want = case[:3]
+    got = run_case(lines, case[3] if len(case) > 3 else None)
     ok = got == want
     bad += 0 if ok else 1
     print("[test_summary] %-12s 期望=%-16s 实际=%-16s %s" % (name, want, got, "✅" if ok else "❌"))

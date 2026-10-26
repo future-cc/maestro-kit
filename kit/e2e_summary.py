@@ -240,6 +240,25 @@ def console_of(flow_name):
     return t[i : j if j > 0 else len(t)]
 
 
+def ui_elements(xml_path, limit=40):
+    """从失败那一刻的 uiautomator dump 里取出屏幕上有文字/无障碍描述的元素：文字 @左上角坐标。"""
+    try:
+        x = open(xml_path, encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return []
+    out = []
+    for n in re.findall(r"<node[^>]*>", x):
+        t = re.search(r' content-desc="([^"]*)"', n) or re.search(r' text="([^"]*)"', n)
+        t = (t.group(1) if t else "").replace("&#10;", " / ").replace("&amp;", "&").strip()
+        if not t:
+            continue
+        b = re.search(r'bounds="\[(\d+),(\d+)\]', n)
+        out.append("%s @%s,%s" % (t[:36], b.group(1), b.group(2)) if b else t[:36])
+        if len(out) >= limit:
+            break
+    return out
+
+
 def classify(step, flow_log, errs, shots_text=""):
     """给失败步骤归类并给出建议的下一步"""
     msg = (step.get("error") or "") + " " + " ".join(flow_log)
@@ -252,6 +271,8 @@ def classify(step, flow_log, errs, shots_text=""):
     e = step.get("error") or ""
     if "Unable to launch app" in e or "launchApp" in step["kind"] and step["status"] == "FAILED":
         return ("launch_failed", "App 启动失败。检查 APK 是否已安装、appId 是否正确、设备是否正常。")
+    if "For input string" in e or "NumberFormatException" in e or "NumberFormatException" in msg:
+        return ("script_error", "flow 里的参数格式不对（常见：百分比坐标写了小数，如 22.5%，Maestro 只认整数百分比；或数字参数写成了文字）。lint 的 W014 会提前报这类问题。")
     if "JsEvaluationException" in e or "JsEvaluationException" in msg or "ReferenceError" in msg or "TypeError:" in msg or "SyntaxError" in msg:
         return ("script_error", "flow 里的 JS 表达式出错（变量未定义或类型错误）。检查 ${...} 里引用的变量是否通过 -e / e2e.env 传入；这是用例问题。")
     if "Element not found" in e or "No visible element found" in e or "Could not find a visible element" in e:
@@ -369,6 +390,10 @@ def main():
                 md.append(f"- Maestro 自动保存的失败截图：{', '.join(fail_imgs)}")
                 h.append("<h3>失败截图</h3>" + "".join(f"<img src='{p}'>" for p in fail_imgs))
             h.append(f"<p class='bad'>归类：{cat}</p><p>{html.escape(advice)}</p>")
+            els = ui_elements(os.path.join(OUT, "failures", name + ".xml"))
+            if els:
+                md += [f"- 失败那一刻屏幕上的元素（`failures/{name}.xml`，前 {len(els)} 个，格式“文字 @左上角x,y”；用来判断点击落在哪、页面当时是什么）：", "```"] + els + ["```"]
+                h.append("<h3>失败那一刻屏幕上的元素</h3><pre>" + html.escape("\n".join(els)) + "</pre>")
             if sl:
                 md += ["- 失败时间点附近的 App 相关日志（flutter 输出、崩溃相关、含包名的行）：", "```"] + sl + ["```"]
                 h.append("<h3>失败时间点附近的 App 日志</h3><pre>" + html.escape("\n".join(sl)) + "</pre>")

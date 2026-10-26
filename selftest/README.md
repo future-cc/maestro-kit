@@ -38,6 +38,7 @@ ANDROID_SERIAL=emulator-5554 bash selftest/run.sh F0         # 只跑名字含 F
 - **并行 `--devices a,b`**：需要两台设备，这里只有一台。
 - **`--build`**、`install.sh`、`doctor.sh`：不在自测范围内。
 - **横屏、录屏、`assertScreenshot`、定位、飞行模式等设备级命令**：没有搬进来（旧自测里有，但它们验证的是 Maestro 本身而不是套件，且会改设备状态）。
+- **lint 新规则 W013 红线词 / W014 百分比小数 / W015 匹配状态栏时钟**：`python3 -I selftest/test_lint_rules.py`，不需要设备；既测该报的会报，也测不该报的不报。
 - **`--repeat` 汇总层 `report.html`**：`python3 -I selftest/test_repeat_html.py`，不需要设备；检查色块、链接/图片是否指向存在的文件、失败截图内嵌、转义。
 - **FLOW_GLOBS 通配符不被当前目录提前展开**：`bash selftest/globs.sh`，不需要设备。
 - **重复运行、失败重跑、不稳定判定**：由单独的 `bash selftest/stability.sh` 验证（一定通过 / 一定失败 / 随机约一半通过三条用例，要求汇总分别判为 稳定通过 / 稳定失败 / 不稳定）。它不含在 `run.sh` 里，因为要多跑几分钟，且随机用例有极小的误报概率（见脚本注释）。

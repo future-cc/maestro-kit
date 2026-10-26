@@ -48,6 +48,7 @@ E2E_PROJECT_ROOT=<测试目录> bash <本仓库>/kit/e2e.sh <flow或目录> ...
 | `kit/doctor.sh` | 环境自检；`--json` 输出机器可读结果（见下） |
 | `install.sh` | 把 `kit/` 复制进项目的 `.maestro/kit/`，生成 `.maestro/e2e.config` 等 |
 | `kit/e2e.sh` | 运行器（装进项目后用 `bash .maestro/kit/e2e.sh`） |
+| `kit/ui_dump.sh` | 列出当前屏幕上的元素（文字 + 整数百分比中心坐标），写 flow 找定位用；只读，小米/红米真机也能用 |
 | `kit/e2e_lint.py` / `kit/e2e_summary.py` / `kit/selftest.sh` | flow 静态检查 / 报告生成 / 自测 |
 | `templates/` | 配置模板、示例 flow、会追加进项目 `CLAUDE.md` 的约定片段 |
 
@@ -93,12 +94,13 @@ bash install.sh /path/to/project
 - 需要时：`cp .maestro/e2e.env.example .maestro/e2e.env`，然后**让用户提供真实值，不要编造、不要从别处推测、不要写进 flow**，也不要在对话里复述。
 
 ### 4. 把示例 flow 换成真的，再先看再跑
-`install.sh` 生成的 `.maestro/smoke/smoke_example.yaml` 里是**占位文字**（"替换成…"），**不换就一定失败**（lint **W012** 会提示；lint 没有 WARN 也不代表它能运行）。要换成被测 App 首屏上真实存在的文字或 id：App 装好后用 `maestro hierarchy` 看元素树（**小米/红米真机除外，改用 `adb exec-out uiautomator dump`，见硬性规则 11**），或直接问用户；**不要猜文案**。
+`install.sh` 生成的 `.maestro/smoke/smoke_example.yaml` 里是**占位文字**（"替换成…"），**不换就一定失败**（lint **W012** 会提示；lint 没有 WARN 也不代表它能运行）。要换成被测 App 首屏上真实存在的文字或 id：App 装好后用 `bash .maestro/kit/ui_dump.sh` 看当前屏幕的元素和坐标（也可用 `maestro hierarchy`；**小米/红米真机不要用 `maestro hierarchy`，见硬性规则 11**），或直接问用户；**不要猜文案**。
 ```bash
 bash .maestro/kit/e2e.sh --list     # 会跑哪些 flow
 bash .maestro/kit/e2e.sh --lint     # 静态检查，先处理 WARN
 bash .maestro/kit/e2e.sh <flow> --no-notify    # --no-notify：结束时不弹桌面通知
 ```
+**正式环境/只读测试：在 `e2e.config` 里设 `LINT_TAP_BLOCK`（红线词，如 `存款,取款,转入,退出登录`）**，lint 的 W013 会拦住“点击这些文字”的用例（位置点击拦不住，仍要靠人）。
 多台设备必须指定 `ANDROID_SERIAL=<序列号>`；用 `adb devices` 看。第一次需要装 App 时加 `--build`（会运行构建命令，先问用户）。
 
 ### 5. 稳定性：新用例要连续 20 次全过才入库
@@ -115,7 +117,7 @@ bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 - 个别真机（如小米 HyperOS）：每次运行都弹“安装驱动”确认、`launchApp` 到不了前台。解法见 [docs/REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md)：`--no-reinstall-driver` + `e2e.config` 的 `PRE_FLOW_CMD`。
 
 ### 6. 读结果
-每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志），要给人看用 `report.html`。
+每次运行生成 `.maestro/reports/<时间>/`：**先读 `summary.md`**（每步状态、失败归类与建议、失败时间点日志、**失败那一刻屏幕上的元素**），要给人看用 `report.html`。
 **每次测试结束，都要把 `report.html` 的完整绝对路径主动告诉用户**（不要只给 `summary.md`，也不要用相对路径；用户的工作目录常常不是项目目录）。`--repeat` 时汇总页是 `.maestro/reports/<时间>_repeat/report.html`（色块可点进每一次运行的网页报告，失败截图内嵌），`e2e.sh` 结束时会打印它的完整路径——**不要用 `grep` 把这一行过滤掉**。退出码：`0` 通过、`1` 有失败、`124` 超时、`2` 用法/环境错误。
 **通过不等于真的成功**：登录这类关键流程要打开最后一张截图确认，不要只看退出码。
 
@@ -132,7 +134,7 @@ bash .maestro/kit/e2e.sh <新flow> --repeat 20 --retry-failed 1 --no-notify
 10. 只在被问到或确有必要时才推送到任何远端；推送公开仓库前先扫描敏感内容。
 11. **小米 / 红米 / POCO 真机上，每次 Maestro 启动都会重装驱动并弹“安装”确认**（[REAL_DEVICE_NOTES.md](docs/REAL_DEVICE_NOTES.md) R1）。所以：
     - 一律通过 `e2e.sh` 跑，并带 `--no-reinstall-driver`；**不要直接手敲 `maestro test`、`maestro hierarchy`、`maestro studio`**（它们每次都会让用户点一次确认）。确要直接调用 `maestro test`，也必须带 `--no-reinstall-driver`。
-    - 看页面元素用 `adb exec-out uiautomator dump` 或截图，不用 `maestro hierarchy`。
+    - 看页面元素用 `bash .maestro/kit/ui_dump.sh`（或截图），不用 `maestro hierarchy`。
     - 第一次运行前，**先告诉用户“手机会弹一次安装确认，请在旁边点一下”**，再运行；驱动装好后不应再弹。如果用户反馈又频繁弹，先检查自己是不是漏了参数，再查别的原因。
     - 测试全部结束后，告诉用户驱动还留在手机上，问是否卸载。
 

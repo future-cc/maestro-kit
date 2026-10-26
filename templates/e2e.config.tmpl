@@ -26,6 +26,10 @@ BLOCK_PATTERNS=""
 # lint：路径里包含这些关键字的 flow 不允许 launchApp clearState: true（逗号分隔，如 login）
 LINT_CLEARSTATE_BLOCK="login"
 
+# lint：点击的文字（text/id，不含 label）里含这些词的 flow 报 W013（逗号分隔）。正式环境/只读测试建议填，如 存款,取款,转入,退出登录
+# 位置点击（point）拦不住，仍要靠人看；确需点击的写 `# lint-ignore: W013`
+LINT_TAP_BLOCK=""
+
 # 每个 flow 运行前执行的命令（shell 语法，可选）。个别手机上 Maestro 的 launchApp 不把 App 带到前台时，
 # 可在这里用 adb 先冷启动 App（见 docs/REAL_DEVICE_NOTES.md R2）。ANDROID_SERIAL 已导出，adb 默认指向当前设备。例：
 # PRE_FLOW_CMD="adb shell am force-stop com.example.app; adb shell am start -W -n com.example.app/.MainActivity"
